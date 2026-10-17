@@ -5,7 +5,16 @@ async function owner(authOptions={}){const id=crypto.randomUUID(),email='manual-
  const origin='http://127.0.0.1:4300',csrf=await f.auth.handlers.GET(new Request(origin+'/api/auth/csrf')),token=await csrf.json(),cookies=csrf.headers.getSetCookie().map(v=>v.split(';')[0]).join('; '),response=await f.auth.handlers.POST(new Request(origin+'/api/auth/callback/credentials',{method:'POST',headers:{cookie:cookies,'content-type':'application/x-www-form-urlencoded','X-Auth-Return-Redirect':'1'},body:new URLSearchParams({email,password:'closed-fixture-password-19',csrfToken:token.csrfToken,callbackUrl:origin+'/'})}));assert.equal(response.status,200);f.setHeaders({cookie:response.headers.getSetCookie().map(v=>v.split(';')[0]).filter(v=>v.startsWith(f.cookieName+'=')||v.startsWith(f.cookieName+'.')).join('; ')});
  const principal=await f.authBindings.readNativeSessionCookie(new Request(origin+'/api/auth/session',{headers:f.headers()}));assert.equal(principal.id,id);assert.equal(principal.email,email);assert.equal(principal.isAdmin,true);return f;
 }
-async function bound(o={}){const f=o.auth??await owner(o.authOptions),b=await fixture({...o,auth:f,account:q=>db.user.findUnique(q),sql:(sql,args)=>db.$queryRawUnsafe(sql,...args)});bindings.push(b);return b;}
+async function bound(o={}){
+ // NEW synthetic publisher originals use independent accounts and a 3-day JWE
+ // at +2 days. Retained current-day posts/claims must now veto publication;
+ // never edit their dates/accounts or renew an existing session to pass tests.
+ const publishes=o.publish||o.image||o.instagram;
+ const authOptions=o.authOptions??(publishes?{settings:{session:{strategy:'jwt',maxAge:3*86400}}}:undefined);
+ const f=o.auth??await owner(authOptions),target=()=>String(BigInt('0x'+crypto.randomBytes(12).toString('hex')));
+ const b=await fixture({...(publishes?{page:target(),ig:target()}:{}),...o,auth:f,account:q=>db.user.findUnique(q),sql:(sql,args)=>db.$queryRawUnsafe(sql,...args)});
+ if(publishes)b.clock.offset=2*86400000;bindings.push(b);return b;
+}
 const rows=key=>pool.query('SELECT id,"commandRef",platform,type,"userId",email,"sessionRef",state,content,pillar,"createdAt"::text,"completedAt"::text FROM admin_social_draft_attempts WHERE "commandRef"=$1 ORDER BY platform',[key]).then(r=>r.rows);
 const social=()=>pool.query('SELECT (SELECT count(*)::int FROM social_posts) AS posts,(SELECT count(*)::int FROM social_pillar_history) AS pillars').then(r=>r.rows[0]);
 async function run(){const identity=(await pool.query("SELECT current_database() AS db,current_setting('data_directory') AS directory,host(inet_server_addr()) AS address,inet_server_port() AS port")).rows[0];assert.equal(identity.db,'ytubviral_migration_test');assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());assert.equal(identity.address,'127.0.0.1');assert.equal(identity.port,55432);const results=[];

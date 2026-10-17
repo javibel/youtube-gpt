@@ -202,9 +202,50 @@ function validSource(s:SocialSource,platform:string):boolean {
 declare const cronSocialImagePrompt:unique symbol;
 export type CronSocialImagePrompt={readonly[cronSocialImagePrompt]:true};
 type CacheAck={date:string;url:string;source:string;stamp:string};
-type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;writeCache:(imageAttemptId:string,url:string,source:string)=>Promise<CacheAck[]>;prompt?:Promise<CronSocialImagePrompt>};
+type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;writeCache:(imageAttemptId:string,url:string,source:string)=>Promise<CacheAck[]>;prompt?:Promise<CronSocialImagePrompt>;publication?:Promise<unknown>};
 type PreparedCronPrompt={source:CronImageSource;prompt:string;imageAttemptId:string;validate:()=>Promise<void>;cache?:CacheAck;use?:Promise<unknown>};
 const cronImageSources=new WeakMap<object,CronImageSource>(),cronImagePrompts=new WeakMap<object,PreparedCronPrompt>();
+
+// Shared durable exclusion for EVERY native publisher, including direct manual
+// draft publishers. It is private: rows and this negative checker cannot issue a
+// source, resume an effect, or acknowledge a publication. A lost INSERT ACK
+// leaves the day occupied. No expiry, deletion, reset or adoption is supported.
+async function admitPublicationDay(platform:string,account:string,date:string,kind:'manual'|'cron',ownerId:string,validate:()=>Promise<void>){
+  await validate();
+  const id=randomUUID(),args=[id,platform,account,date,kind,ownerId];
+  const rows=await prisma.$queryRawUnsafe<{id:string;stamp:string}[]>(`INSERT INTO social_publication_daily_attempts(id,platform,"accountId",date,"ownerKind","ownerId")
+    SELECT $1,$2,$3,$4,$5,$6 WHERE
+    (($5='manual' AND EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE id=$6 AND platform=$2 AND state='completed'))
+      OR ($5='cron' AND EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$6 AND platform=$2 AND date=$4 AND state='completed')))
+    AND NOT EXISTS(SELECT 1 FROM social_posts WHERE platform=$2 AND "createdAt">=($4::date)::timestamp AND "createdAt"<($4::date+1)::timestamp)
+    AND NOT EXISTS(SELECT 1 FROM admin_social_publish_attempts a WHERE a.platform=$2 AND a."accountId"=$3 AND a.date=$4
+      AND NOT($5='manual' AND EXISTS(SELECT 1 FROM admin_social_draft_attempts d WHERE d.id=$6 AND d."commandRef"=a."commandRef" AND d.platform=a.platform)))
+    ON CONFLICT DO NOTHING RETURNING id,"createdAt"::text AS stamp`,...args);
+  if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).sort().join(',')!=='id,stamp'||rows[0].id!==id||typeof rows[0].stamp!=='string'||!rows[0].stamp)throw Error('social_publish_unconfirmed');
+  const stamp=rows[0].stamp;
+  const checkRow=async()=>{
+    const current=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_publication_daily_attempts WHERE id=$1 AND platform=$2 AND "accountId"=$3 AND date=$4 AND "ownerKind"=$5 AND "ownerId"=$6 AND state='admitted' AND "createdAt"::text=$7) AS eligible`,...args,stamp);
+    if(!Array.isArray(current)||current.length!==1||Object.keys(current[0]).length!==1||current[0].eligible!==true)throw Error('social_publish_unconfirmed');
+  };
+  const check=async()=>{await validate();await checkRow();await validate();};
+  await check();return {check,checkRow};
+}
+
+// This new publication continuation requires this invocation's own completed
+// social source/history ACK. It admits only the captured server account/day.
+// Its callback is NOT a publication receipt: image binding, remote effect and
+// SQL completion still belong to a separate publisher, currently unwired.
+export function runCronSocialPublication<T>(original:NativeCronSocialPost|undefined,run:(context:Readonly<{date:string;platform:'facebook'|'instagram';accountId:string;content:string;validateBeforeDispatch:()=>Promise<void>;remainingBeforeDispatch:()=>number}>)=>Promise<T>):Promise<T>{
+  const own=original&&cronImageSources.get(original);
+  if(!own||!['facebook','instagram'].includes(own.platform))return Promise.reject(Error('social_publish_unconfirmed'));
+  return (own.publication??=Promise.resolve().then(async()=>{
+    const platform=own.platform as 'facebook'|'instagram',key=platform==='facebook'?'META_PAGE_ID':'INSTAGRAM_ACCOUNT_ID',account=process.env[key];
+    if(!account||!/^\d{1,32}$/.test(account))throw Error('social_publish_unconfirmed');
+    const validate=async()=>{if(process.env[key]!==account)throw Error('social_publish_unconfirmed');await own.validate();if(process.env[key]!==account)throw Error('social_publish_unconfirmed');};
+    const {check}=await admitPublicationDay(platform,account,own.date,'cron',own.id,validate);
+    await check();const result=await run(Object.freeze({date:own.date,platform,accountId:account,content:own.content,validateBeforeDispatch:check,remainingBeforeDispatch:own.remaining}));await check();return result;
+  })) as Promise<T>;
+}
 
 export function generateSocialPost(
   platform: Platform,
@@ -400,7 +441,7 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
     await own.validateBeforeDispatch();
     // Only this exact publication's acknowledged post/history may be excluded
     // from its original source veto. Foreign writes still invalidate the source.
-    let published:{postId:string;historyId:number}|undefined,intent:{imageUrl:string|null}|undefined;
+    let published:{postId:string;historyId:number}|undefined,intent:{imageUrl:string|null}|undefined,publicationDayCheck:(()=>Promise<void>)|undefined,publicationDayRowCheck:(()=>Promise<void>)|undefined;
     const retainedSource=sourceSql.replace('WHERE channel=$3','WHERE channel=$3 AND id<>$14::integer').replace("WHERE status='published'","WHERE status='published' AND id<>$13");
     const validate=async()=>{
       await own.validateBeforeDispatch();const result=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12 AND "completedAt" IS NOT NULL AND ${published?retainedSource:sourceSql}=$5::jsonb AND ${actor}${published?` AND EXISTS(SELECT 1 FROM social_posts WHERE id=$13 AND platform=$3 AND content=$11 AND status='published' AND "bufferId"=$15 AND "publishedAt" IS NOT NULL AND "imageUrl" IS NOT DISTINCT FROM $16::text AND "errorMsg" IS NULL) AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$14::integer AND channel=$3 AND pillar=$12)`:intent?` AND EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$3 AND content=$11 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NOT DISTINCT FROM $13::text AND "errorMsg" IS NULL)`:''}) AS eligible`,...args,content,pillar.id,...(published?[id,published.historyId,published.postId,intent!.imageUrl]:intent?[intent.imageUrl]:[]));
@@ -417,6 +458,14 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
       if(image&&!store)throw Error('social_publish_unconfirmed');
       const config=()=>{check();if((instagram?process.env.INSTAGRAM_ACCOUNT_ID:process.env.META_PAGE_ID)!==page||(instagram?process.env.INSTAGRAM_ACCESS_TOKEN:process.env.META_PAGE_ACCESS_TOKEN)!==token||process.env.META_APP_SECRET!==secret||instagram&&process.env.INSTAGRAM_GRAPH_API_VERSION!==version||image&&process.env.BLOB_READ_WRITE_TOKEN!==blobToken)throw Error('social_publish_unconfirmed');};
       await validate();config();
+      const date=new Date(own.at).toISOString().slice(0,10);
+      const admission=await admitPublicationDay(platform,page,date,'manual',id,async()=>{await validate();config();});
+      publicationDayCheck=admission.check;publicationDayRowCheck=admission.checkRow;
+      // Both controller-driven and direct native draft publishers pass the same
+      // daily unique gate before intent/image/remote dispatch. Controller claims
+      // from earlier code are vetoes, never shared-day recovery authority.
+      const dispatchCheck=async()=>{await publicationDayCheck!();config();};
+      await dispatchCheck();
       // The draft's UUID is also this one publication's record ID. INSERT ACK
       // never authorizes adoption of an existing pending/failed/published row.
       const admitted=await prisma.$queryRawUnsafe<{id:string}[]>(`INSERT INTO social_posts(id,platform,content,status,"createdAt")
@@ -425,16 +474,16 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
         ON CONFLICT(id) DO NOTHING RETURNING id`,...args,content,pillar.id);
       config();if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==1||admitted[0].id!==id)throw Error('social_publish_unconfirmed');
       intent={imageUrl:null};
-      await validate();const eligible=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL) AS eligible`,id,platform,content);
+      await dispatchCheck();const eligible=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL) AS eligible`,id,platform,content);
       config();if(!Array.isArray(eligible)||eligible.length!==1||Object.keys(eligible[0]).length!==1||eligible[0].eligible!==true)throw Error('social_publish_unconfirmed');
-      await validate();config();
+      await dispatchCheck();
       if(image){
-        const {renderManualSocialInfographic}=await import('@/lib/agent/manual-social-infographic');await validate();config();
+        const {renderManualSocialInfographic}=await import('@/lib/agent/manual-social-infographic');await dispatchCheck();
         const rendered=renderManualSocialInfographic(content),png=await readManualSocialBody(rendered,5*1024*1024,own.remainingBeforeDispatch);config();
         if(!rendered.ok||rendered.headers.get('content-type')!=='image/png'||png.length<33||!png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||png.readUInt32BE(16)!==1080||png.readUInt32BE(20)!==1080)throw Error('social_publish_unconfirmed');
         let bytes=png;
-        if(instagram){const {encodeManualSocialJpeg}=await import('@/lib/agent/manual-social-jpeg');await validate();config();bytes=await encodeManualSocialJpeg(png);await validate();config();if(bytes.length<4||bytes.length>5*1024*1024||bytes.readUInt16BE(0)!==0xffd8||bytes.readUInt16BE(bytes.length-2)!==0xffd9)throw Error('social_publish_unconfirmed');}
-        await validate();config();const pathname=`social-manual/${id}.${instagram?'jpg':'png'}`,contentType=instagram?'image/jpeg':'image/png';
+        if(instagram){const {encodeManualSocialJpeg}=await import('@/lib/agent/manual-social-jpeg');await dispatchCheck();bytes=await encodeManualSocialJpeg(png);await dispatchCheck();if(bytes.length<4||bytes.length>5*1024*1024||bytes.readUInt16BE(0)!==0xffd8||bytes.readUInt16BE(bytes.length-2)!==0xffd9)throw Error('social_publish_unconfirmed');}
+        await dispatchCheck();const pathname=`social-manual/${id}.${instagram?'jpg':'png'}`,contentType=instagram?'image/jpeg':'image/png';
         // Installed Blob protocol12,but one native PUT only:no SDK retry,
         // ambient API/OIDC override,overwrite,lookup or URL-based adoption.
         const uploaded=await fetch('https://vercel.com/api/blob/?'+new URLSearchParams({pathname}),{method:'PUT',redirect:'error',headers:{authorization:'Bearer '+blobToken,'x-vercel-blob-store-id':store!,'x-api-version':'12','x-api-blob-request-id':`${store}:${own.at}:${id}`,'x-api-blob-request-attempt':'0','x-vercel-blob-access':'public','x-add-random-suffix':'0','x-allow-overwrite':'0','x-content-type':contentType,'x-content-length':String(bytes.length)},body:Uint8Array.from(bytes),signal:AbortSignal.timeout(own.remainingBeforeDispatch())});
@@ -443,7 +492,7 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
         if(!uploaded.ok||uploaded.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||!('url'in raw)||typeof raw.url!=='string'||raw.url!==`https://${store!.toLowerCase()}.public.blob.vercel-storage.com/${pathname}`||!('pathname'in raw)||raw.pathname!==pathname||!('contentType'in raw)||raw.contentType!==contentType)throw Error('social_publish_unconfirmed');
         const imageUrl=raw.url,savedImage=await prisma.$queryRawUnsafe<{id:string;imageUrl:string}[]>(`UPDATE social_posts SET "imageUrl"=$4 WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL RETURNING id,"imageUrl"`,id,platform,content,imageUrl);
         if(!Array.isArray(savedImage)||savedImage.length!==1||Object.keys(savedImage[0]).length!==2||savedImage[0].id!==id||savedImage[0].imageUrl!==imageUrl)throw Error('social_publish_unconfirmed');
-        intent.imageUrl=imageUrl;await validate();config();
+        intent.imageUrl=imageUrl;await dispatchCheck();
       }
       const message=content.replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/_(.*?)_/g,'$1').replace(/`(.*?)`/g,'$1').replace(/#{1,6}\s/g,'');
       const proof=secret?createHmac('sha256',secret).update(token).digest('hex'):undefined;
@@ -454,24 +503,24 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
         // recovered ID, deadline extension or retry of an uncertain request.
         const base=`https://graph.instagram.com/${version}`,caption=Array.from(message).slice(0,2200).join(''),credentials={access_token:token,...(proof?{appsecret_proof:proof}:{})};
         const json=async(response:Response):Promise<Record<string,unknown>>=>{const raw:unknown=await response.json();if(!response.ok||response.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||'error'in raw)throw Error('social_publish_unconfirmed');return raw as Record<string,unknown>;};
-        await validate();config();
+        await dispatchCheck();
         const container=await json(await fetch(`${base}/${page}/media`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_url:intent!.imageUrl,caption,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
         if(typeof container.id!=='string'||!/^\d{1,32}$/.test(container.id))throw Error('social_publish_unconfirmed');const creationId=container.id;
         // Local bounded cadence,not a provider guarantee:up to ten reads with
         // five seconds between acknowledged IN_PROGRESS responses. A full wait
         // must fit the remaining original lifetime;never shorten/restart it.
         for(let read=0;read<10;read++){
-          await validate();config();
+          await dispatchCheck();
           const status=await json(await fetch(`${base}/${creationId}?`+new URLSearchParams({fields:'status_code',...credentials}),{method:'GET',redirect:'error',signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
           config();if(status.id!==creationId)throw Error('social_publish_unconfirmed');
           if(status.status_code==='FINISHED')break;
           if(status.status_code!=='IN_PROGRESS'||read===9)throw Error('social_publish_unconfirmed');
-          await validate();config();
+          await dispatchCheck();
           if(own.remainingBeforeDispatch()<=5000)throw Error('social_publish_unconfirmed');
           await new Promise<void>(resolve=>setTimeout(resolve,5000));
-          await validate();config();
+          await dispatchCheck();
         }
-        await validate();config();
+        await dispatchCheck();
         const ack=await json(await fetch(`${base}/${page}/media_publish`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({creation_id:creationId,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
         if(typeof ack.id!=='string'||!/^\d{1,32}$/.test(ack.id))throw Error('social_publish_unconfirmed');postId=ack.id;
       }else{
@@ -489,7 +538,7 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
         history AS(INSERT INTO social_pillar_history(channel,pillar) SELECT $2,$4 FROM updated RETURNING id)
         SELECT updated.id,$5::text AS "postId",history.id AS "historyId" FROM updated CROSS JOIN history`,id,platform,content,pillar.id,postId,intent.imageUrl);
       if(!Array.isArray(completed)||completed.length!==1||Object.keys(completed[0]).length!==3||completed[0].id!==id||completed[0].postId!==postId||!Number.isSafeInteger(completed[0].historyId))throw Error('social_publish_unconfirmed');
-      published={postId,historyId:completed[0].historyId};await validate();config();
+      published={postId,historyId:completed[0].historyId};await dispatchCheck();
       return Object.freeze({platform,recordId:id,postId});
     };
     // Final batch checks may inspect this exact publisher's own artifacts after
@@ -499,6 +548,7 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
     const validatePublished=async(withSource:boolean)=>{
       if(!published||!intent)throw Error('social_publish_unconfirmed');
       await own.validateBeforeDispatch();
+      if(!publicationDayRowCheck)throw Error('social_publish_unconfirmed');await publicationDayRowCheck();
       const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE id=$1 AND "commandRef"=$2 AND platform=$3 AND type=$4 AND "userId"=$5 AND email=$6 AND "sessionRef"=$8 AND state='completed' AND content=$9 AND pillar=$10 AND "completedAt" IS NOT NULL
         AND EXISTS(SELECT 1 FROM users WHERE id=$5 AND email=$6 AND "emailVerified"=timezone('UTC',$7::timestamptz))
         AND EXISTS(SELECT 1 FROM social_posts WHERE id=$11 AND platform=$3 AND content=$9 AND status='published' AND "bufferId"=$13 AND "publishedAt" IS NOT NULL AND "imageUrl" IS NOT DISTINCT FROM $14::text AND "errorMsg" IS NULL)
