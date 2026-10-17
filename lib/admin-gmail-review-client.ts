@@ -6,7 +6,7 @@ export type GmailReviewView={readonly[gmailReviewView]:true};
 const views=new WeakMap<object,{own:object;data:GmailReviewData}>();
 const object=(value:unknown,keys:string[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
 const integer=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
-function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true}).decode(new TextEncoder().encode(value))===value;}
+function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(new TextEncoder().encode(value))===value;}
 function reviewData(v:unknown):GmailReviewData{
  const keys=['attachment','alternative','html','otherMime','encoding','structure'];
  if(!object(v,['scanned','read','skipped','hasMore','exclusions','messages','coverage','acceptance'])||!integer(v.scanned)||v.scanned>10||!integer(v.read)||!integer(v.skipped)||v.read+v.skipped!==v.scanned

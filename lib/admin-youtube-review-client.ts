@@ -5,7 +5,7 @@ export type YoutubeReviewView={readonly[youtubeReviewView]:true};
 const views=new WeakMap<object,{own:object;data:YoutubeReviewData}>();
 const object=(value:unknown,keys:string[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
 const integer=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
-function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&value.length>0&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true}).decode(new TextEncoder().encode(value))===value;}
+function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&value.length>0&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(new TextEncoder().encode(value))===value;}
 function reviewData(v:unknown):YoutubeReviewData{
  if(!object(v,['pages','scanned','eligible','hasMore','comments','coverage','acceptance'])||!integer(v.pages)||v.pages<1||v.pages>3||!integer(v.scanned)||v.scanned>v.pages*20||!integer(v.eligible)||v.eligible>v.scanned
   ||typeof v.hasMore!=='boolean'||v.hasMore&&v.pages!==3||v.coverage!=='at-most-three-pages-within-original-budget'||v.acceptance!=='private-read-only-not-draft-reply-or-operative-acceptance'
