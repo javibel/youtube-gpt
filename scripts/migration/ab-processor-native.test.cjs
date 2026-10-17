@@ -24,7 +24,9 @@ async function bound(o={}){
 async function reached(b,name){let timer;try{await Promise.race([(b.entered[name]??=deferred()).promise,new Promise((_,reject)=>timer=setTimeout(()=>reject(Error('Missing creation stage '+name)),4000))]);}finally{clearTimeout(timer);}}
 async function drain(b){b.release();let n;do{n=b.pending.length;await Promise.allSettled(b.pending);await flush();}while(n!==b.pending.length);assert.equal(b.timers.size,0);}
 
-async function cron(p,status=200){const r=await p;assert.equal(r.status,status);return r.json();}
+// This fixture deliberately supplies no native Instagram source. A completed
+// A/B transition is visible separately; it cannot acknowledge the whole GET.
+async function cron(p,status=503){const r=await p;assert.equal(r.status,status);const body=await r.json();if(status===503){assert.equal(body.ok,false);assert.equal(body.error,'social_publish_unconfirmed');assert.equal(body.results.instagram,undefined);assert.equal(body.results.brandImage,undefined);}return body;}
 function uncertain(r){assert.equal(r.unconfirmed,true);assert(r.errors.includes('ab_processor_unconfirmed'));}
 async function run(){const results=[];async function test(name,fn){if(results.some(v=>v.status==='FAIL'))return;const n=bindings.length;try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}finally{for(const b of bindings.slice(n))await drain(b);}}
  for(const kind of ['token','manual-plan'])await test('native '+kind+' expiry after last dispatch COMMIT prevents PUT',async()=>{let b;b=await bound({afterTransaction:async n=>{if(n===2)b.advance(1000);}});if(kind==='token')b.state.token.expiresAt=new Date(b.state.wallBase+1000);else b.state.plan.currentPeriodEnd=new Date(b.state.wallBase+1000);uncertain(await b.run());assert.equal(b.state.puts.length,0);assert.equal(b.state.mutations[0].state,'pending');});
