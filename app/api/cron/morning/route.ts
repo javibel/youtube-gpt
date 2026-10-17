@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, _issueSocialPost, _issueBrandImageRead, issueMorningSocial) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, _issueSocialPost, _issueBrandImageRead, issueMorningSocial, issueVerificationReminders) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -44,11 +44,12 @@ export async function GET(request: Request) {
     results.onboarding = 'disabled_2026-07-01_dup_lifecycle';
 
     // 0b. Verification reminders to unverified signups (gated by VERIFY_REMINDER_ENABLED)
-    const verifyReminders = await step(() => sendVerificationReminders()).catch(err => {
+    const verifyReminders = await step(() => sendVerificationReminders(issueVerificationReminders())).catch(err => {
       errors.push(`VerifyReminder: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
-    results.verifyReminders = verifyReminders;
+    results.verifyReminders = typeof verifyReminders==='number'?verifyReminders:verifyReminders.providerAccepted;
+    if(typeof verifyReminders!=='number'){results.verificationReminderCoverage=verifyReminders;if(verifyReminders.unconfirmed>0)errors.push('Verification reminders unconfirmed');}
 
     // 0c. Re-engagement emails to dormant activated users (gated by REENGAGEMENT_ENABLED)
     const reengaged = await step(() => sendReengagementEmails()).catch(err => {

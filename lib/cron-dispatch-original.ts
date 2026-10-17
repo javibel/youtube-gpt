@@ -14,6 +14,8 @@ declare const nativeCronBrandImageRead: unique symbol;
 export type NativeCronBrandImageRead = { readonly [nativeCronBrandImageRead]: true };
 declare const nativeCronMorningSocial: unique symbol;
 export type NativeCronMorningSocial = { readonly [nativeCronMorningSocial]: true };
+declare const nativeCronVerificationReminders:unique symbol;
+export type NativeCronVerificationReminders={readonly[nativeCronVerificationReminders]:true};
 type MorningSocialContext=Readonly<{facebook:NativeCronSocialPost;instagram:NativeCronSocialPost;facebookRead:NativeCronBrandImageRead;instagramRead:NativeCronBrandImageRead;checkBeforeDispatch:()=>void}>;
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
@@ -24,6 +26,7 @@ const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promis
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
 const socialPosts = new WeakMap<object, { parent: Original; date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
 const imageReads = new WeakMap<object, { parent: Original; source?:NativeCronSocialPost; date: string; check: () => void; promise?: Promise<unknown> }>();
+const verificationReminders=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const morningSocials=new WeakMap<object,{context:MorningSocialContext;promise?:Promise<unknown>}>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
@@ -55,7 +58,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
     issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost,
     issueBrandImageRead: () => NativeCronBrandImageRead,
-    issueMorningSocial: () => NativeCronMorningSocial) => Promise<T>): Promise<T> {
+    issueMorningSocial: () => NativeCronMorningSocial, issueVerificationReminders:()=>NativeCronVerificationReminders) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -150,7 +153,9 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     const checkBeforeDispatch=()=>{check();validateCronImageReadSource(facebook,facebookRead);validateCronImageReadSource(instagram,instagramRead);};
     morningSocials.set(cap,{context:Object.freeze({facebook,instagram,facebookRead,instagramRead,checkBeforeDispatch})});return cap;
   };
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial); check(); return result; }
+  let remindersIssued=false;
+  const issueVerificationReminders=():NativeCronVerificationReminders=>{check();if(own.slot!=='morning'||remindersIssued)throw Error('verification_reminder_unconfirmed');remindersIssued=true;const cap=Object.freeze({})as NativeCronVerificationReminders,date=new Date(own.at).toISOString().slice(0,10);verificationReminders.set(cap,{at:own.at,check:()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('verification_reminder_unconfirmed');}});return cap;};
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial,issueVerificationReminders); check(); return result; }
   finally { retired = true; }
 }
 
@@ -220,4 +225,9 @@ export function runCronDailyTip<T>(original: NativeCronDailyTip,
     own.check();
     return run({ date: own.date, checkBeforeDispatch: own.check });
   })) as Promise<T>;
+}
+
+export function runCronVerificationReminders<T>(original:NativeCronVerificationReminders|undefined,run:(context:Readonly<{at:number;checkBeforeDispatch:()=>void}>)=>Promise<T>):Promise<T>{
+ const own=original&&verificationReminders.get(original);if(!own)return Promise.reject(Error('verification_reminder_unconfirmed'));
+ return(own.promise??=Promise.resolve().then(async()=>{own.check();const result=await run(Object.freeze({at:own.at,checkBeforeDispatch:own.check}));own.check();return result;}))as Promise<T>;
 }
