@@ -453,11 +453,11 @@ export function consumeCronFacebookPublication<T>(receipt:NativeCronFacebookPubl
 
 declare const nativeCronInstagramPublication:unique symbol;
 export type NativeCronInstagramPublication={readonly[nativeCronInstagramPublication]:true};
-type CronInstagramPublicationDetails=Readonly<{platform:'instagram';date:string;recordId:string;containerId:string;postId:string}>;
+type CronInstagramPublicationDetails=Readonly<{platform:'instagram';date:string;recordId:string;containerId:string;postId:string;brandImage:Readonly<{date:string;cacheCompleted:true}|{date:string;cacheResourceRead:true;producerAcknowledged:false}>}>;
 const instagramPublicationAttempts=new WeakMap<object,{read:NativeCronBrandImageRead|undefined;promise:Promise<NativeCronInstagramPublication>}>();
 const instagramPublications=new WeakMap<object,{original:NativeCronSocialPost;details:CronInstagramPublicationDetails;validate:()=>Promise<void>;use?:Promise<unknown>}>();
 
-// Native component only. GET integration remains separate work.
+// Native component consumed by the evening GET;morning batch integration remains.
 // Source/image/target/day/HTTP/SQL each retain their original continuation;no
 // serialized URL,remote ID or persisted post can construct this final receipt.
 export function publishCronInstagramPhoto(original:NativeCronSocialPost|undefined,read?:NativeCronBrandImageRead):Promise<NativeCronInstagramPublication>{
@@ -477,14 +477,14 @@ export function publishCronInstagramPhoto(original:NativeCronSocialPost|undefine
       shared=cronPublicationAdmissions.get(original);
       if(!shared||shared.source!==own||target.accountId!==context.accountId)throw Error('social_publish_unconfirmed');
       // Occupy the common day before any image prompt/model/download/PUT.
-      await validate();image=await helper.getOrCreateDailyBrandImage(original,read);await validate();
+      await validate();try{image=await helper.getOrCreateDailyBrandImage(original,read);}catch{throw Error('daily_brand_image_unconfirmed');}await validate();
       const outcome=Object.freeze({});let acknowledged:CronInstagramPublicationDetails|undefined;
       const result=await helper.consumeDailyBrandImage(image,async resource=>{
         if(resource.date!==own.date)throw Error('social_publish_unconfirmed');await validate();
         await own.writePublicationIntent(resource.url,shared!);await validate();
         const ack=await target.publish({date:own.date,caption:own.content,imageUrl:resource.url});await validate();
         await own.writePublication(ack.postId,shared!);await validate();
-        acknowledged=Object.freeze({platform:'instagram',date:own.date,recordId:own.id,containerId:ack.containerId,postId:ack.postId});return outcome;
+        acknowledged=Object.freeze({platform:'instagram',date:own.date,recordId:own.id,containerId:ack.containerId,postId:ack.postId,brandImage:Object.freeze(resource.producerAcknowledged?{date:own.date,cacheCompleted:true as const}:{date:own.date,cacheResourceRead:true as const,producerAcknowledged:false as const})});return outcome;
       });
       // A previously consumed image cannot substitute a different callback's
       // result;only THIS callback's exact awaited outcome may issue a receipt.

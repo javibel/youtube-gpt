@@ -1,8 +1,6 @@
 import { authorizeCronDispatch, runCronDispatch } from '@/lib/cron-dispatch-original';
 import { NextResponse } from 'next/server';
-import { generateSocialPost } from '@/lib/agent/content-generator';
-import { getOrCreateDailyBrandImage, consumeDailyBrandImage } from '@/lib/agent/ideogram-image';
-import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
+import { generateSocialPost,publishCronInstagramPhoto,consumeCronInstagramPublication } from '@/lib/agent/content-generator';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
 import { processAbTests } from '@/lib/ab-test-processor';
@@ -58,26 +56,21 @@ export async function GET(request: Request) {
     errors.push(...youtube.errors);
     results.youtube = { processed: youtube.processed, replied: youtube.replied };
 
-    // Keep the same evening source and original 55-second lifetime.
-    if (ig) {
-      try {
-        const image=await step(()=>getOrCreateDailyBrandImage(instagramOriginal,issueBrandImageRead()));
-        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>own.producerAcknowledged?{date:own.date,cacheCompleted:true}:{date:own.date,cacheResourceRead:true,producerAcknowledged:false}));
-      } catch {
-        return NextResponse.json({ok:false,error:'daily_brand_image_unconfirmed',results,errors},{status:503});
-      }
-      results.instagram={success:false,error:'social_publish_unconfirmed'};
-      return NextResponse.json({ok:false,error:'social_publish_unconfirmed',results,errors},{status:503});
+    // The same source/read/native lifetime owns image,day,remote effect and
+    // SQL completion. Only its private final consumer may build this response.
+    if (!ig) return NextResponse.json({ok:false,error:'social_publish_unconfirmed',results,errors},{status:503});
+    try {
+      const receipt=await step(()=>publishCronInstagramPhoto(instagramOriginal,issueBrandImageRead()));
+      return await step(()=>consumeCronInstagramPublication(receipt,async published=>{
+        await published.validateBeforeResponse();
+        const response=NextResponse.json({ok:errors.length===0,...(errors.length?{error:'cron_jobs_unconfirmed'}:{}),results:{...results,brandImage:published.brandImage,instagram:{success:true,postId:published.postId}},errors},{status:errors.length?503:200});
+        await published.validateBeforeResponse();return response;
+      }));
+    } catch (error) {
+      const code=(error as {message?:unknown}|null)?.message==='daily_brand_image_unconfirmed'?'daily_brand_image_unconfirmed':'social_publish_unconfirmed';
+      return NextResponse.json({ok:false,error:code,results,errors},{status:503});
     }
 
-    if (errors.length > 0) {
-      await step(() => sendNotificationEmail(
-        '[YTubViral Agent] Errores en cron vespertino',
-        errors.join('\n')
-      )).catch(() => {});
-    }
-
-    return NextResponse.json({ ok: true, results, errors });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[cron/evening]', msg);
