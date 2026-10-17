@@ -3,22 +3,12 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import DashboardShell from '@/components/DashboardShell';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
 import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
+import { useAdminSocialState } from '@/lib/use-admin-social-state';
 
-type SocialPost = {
-  id: string; platform: string; content: string; status: string;
-  publishedAt: string | null; createdAt: string; errorMsg: string | null; bufferId: string | null;
-};
-type SocialMessage = {
-  id: string; platform: string; fromUser: string; content: string;
-  externalId: string | null; receivedAt: string; replied: boolean;
-  replyContent: string | null; repliedAt: string | null;
-};
-type Status = { youtube: boolean; gmail: boolean; facebook: boolean; instagram: boolean; tiktok: boolean; twitter: boolean };
-type AdminData = { posts: SocialPost[]; messages: SocialMessage[]; status: Status };
 type LogEntry = { type: 'info' | 'success' | 'error'; msg: string; ts: string };
 
 const PLATFORM_EMOJI: Record<string, string> = {
@@ -74,35 +64,18 @@ function PreviewModal({ data, onClose }: { data: Record<string, string | null>; 
 export default function SocialAdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [data, setData] = useState<AdminData | null>(null);
+  const history = useAdminSocialState(session,status);
+  const data = history.data;
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const actionInFlight=useRef(false);
   const preview = useAdminSocialPreview(session,status,actionInFlight);
   const publication = useAdminSocialPublication(session,status,actionInFlight);
   const messages = useAdminSocialMessages(session,status,actionInFlight);
 
-  const addLog = useCallback((type: LogEntry['type'], msg: string) => {
-    setLogs(prev => [{ type, msg, ts: new Date().toLocaleTimeString('es-ES') }, ...prev].slice(0, 100));
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/social');
-      if (res.ok) setData(await res.json());
-    } catch { addLog('error', 'Error cargando datos'); }
-  }, [addLog]);
-
   useEffect(() => {
-    if (status === 'unauthenticated') { router.push('/login'); return; }
-    if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
-    if (status === 'authenticated') fetchData();
-  }, [status, session, router, fetchData]);
-
-  useEffect(() => {
-    const t = setInterval(fetchData, 30_000);
-    return () => clearInterval(t);
-  }, [fetchData]);
-
+    if (status === 'unauthenticated') router.push('/login');
+    if (status === 'authenticated' && !(session?.user as {isAdmin?:boolean})?.isAdmin) router.push('/dashboard');
+  },[status,session,router]);
 
   if (status === 'loading') {
     return (
@@ -130,19 +103,20 @@ export default function SocialAdminPage() {
 
         {/* Estado */}
         <section>
-          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Estado de integraciones</p>
+          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Configuración de integraciones</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <p role="status" className="text-sm mb-3" style={{color:'var(--text-faint)'}}>{history.message}</p>
             {data?.status && (Object.entries({
               YouTube: data.status.youtube, Gmail: data.status.gmail,
               Facebook: data.status.facebook, Instagram: data.status.instagram,
-              TikTok: null, Twitter: null,
-            }) as [string, boolean | null][]).map(([label, connected]) => (
+              TikTok: data.status.tiktok, Twitter: data.status.twitter,
+            }) as [string, string][]).map(([label, connected]) => (
               <div key={label} className="yv-card p-3">
                 <div className="text-[13px] mb-1" style={{ color: 'var(--text-faint)' }}>
                   {PLATFORM_EMOJI[label.toLowerCase()] ?? '🔗'} {label}
                 </div>
-                <div className="text-[13px] font-semibold font-mono-jb" style={{ color: connected === null ? '#fbbf24' : connected ? '#22c55e' : '#f87171' }}>
-                  {connected === null ? 'Manual' : connected ? 'OK' : 'Error'}
+                <div className="text-[13px] font-semibold font-mono-jb" style={{ color: 'var(--text-dim)' }}>
+                  {({configured:'Configurada', 'not-configured':'Sin configurar',disabled:'Desactivada',manual:'Manual'}[connected])}
                 </div>
               </div>
             ))}
@@ -192,7 +166,7 @@ export default function SocialAdminPage() {
           <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Historial de publicaciones</p>
           <div className="yv-card overflow-hidden">
             {!data?.posts.length ? (
-              <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin publicaciones aún.</p>
+              <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>{data ? 'Sin publicaciones almacenadas.' : 'Historial de publicaciones no disponible.'}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" style={{ minWidth: 680 }}>
@@ -233,7 +207,7 @@ export default function SocialAdminPage() {
           <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Mensajes recibidos</p>
           <div className="yv-card overflow-hidden">
             {!data?.messages.length ? (
-              <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin mensajes procesados aún.</p>
+              <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>{data ? 'Sin mensajes almacenados.' : 'Historial de mensajes no disponible.'}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" style={{ minWidth: 680 }}>
@@ -246,12 +220,12 @@ export default function SocialAdminPage() {
                   </thead>
                   <tbody>
                     {data.messages.map(msg => {
-                      const gmailUrl = msg.platform === 'gmail' && msg.externalId
+                      const gmailUrl = msg.platform === 'gmail' && msg.externalId && /^[a-f0-9]{1,128}$/.test(msg.externalId)
                         ? `https://mail.google.com/mail/u/0/#inbox/${msg.externalId}` : null;
                       return (
                         <tr key={msg.id} style={{ borderBottom: '1px solid var(--line)', cursor: gmailUrl ? 'pointer' : 'default' }}
                           className="transition-colors hover:bg-white/[0.02]"
-                          onClick={() => gmailUrl && window.open(gmailUrl, '_blank')}>
+                          onClick={() => gmailUrl && window.open(gmailUrl, '_blank', 'noopener,noreferrer')}>
                           <td className="px-5 py-3 font-medium whitespace-nowrap text-sm" style={{ color: 'var(--text)' }}>
                             {PLATFORM_EMOJI[msg.platform] ?? '🔗'} {msg.platform}
                             {gmailUrl && <span className="ml-1 text-[13px]" style={{ color: 'var(--text-faint)' }}>↗</span>}
