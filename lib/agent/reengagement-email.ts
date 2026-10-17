@@ -30,7 +30,7 @@ function buildHtml(name: string, lang: 'es' | 'en',userId:string): string {
   <p style="color:#666;font-size:13px">Tienes tus 10 generaciones gratis de este mes esperándote.</p>
   <p style="color:#666;font-size:13px">Y si algo no te encajó la primera vez, respóndeme a este email y lo miro — lo leo yo.</p>
   <p style="color:#666;font-size:13px">— Javier, fundador de YTubViral</p>
-  <p style="font-size:12px"><a href="${unsubscribe}">${lang==='en'?'Unsubscribe':'Darme de baja'}</a></p>
+  <p style="font-size:12px"><a href="${unsubscribe}">Darme de baja</a></p>
 </div>`.trim();
   }
 
@@ -48,7 +48,7 @@ function buildHtml(name: string, lang: 'es' | 'en',userId:string): string {
   <p style="color:#666;font-size:13px">Your 10 free generations this month are waiting.</p>
   <p style="color:#666;font-size:13px">And if something didn't click the first time, just reply to this email and I'll look into it — I read every one.</p>
   <p style="color:#666;font-size:13px">— Javier, founder of YTubViral</p>
-  <p style="font-size:12px"><a href="${unsubscribe}">${lang==='en'?'Unsubscribe':'Darme de baja'}</a></p>
+  <p style="font-size:12px"><a href="${unsubscribe}">Unsubscribe</a></p>
 </div>`.trim();
 }
 
