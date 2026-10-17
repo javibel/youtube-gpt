@@ -58,3 +58,8 @@ export function consumeCachedBrandImageRead<T>(receipt: CachedBrandImageRead | u
     await own.validate(); return result;
   })) as Promise<T>;
 }
+
+// Negative validation of this same private read;no new consumer or producer ACK.
+export async function validateCachedBrandImageRead(receipt:CachedBrandImageRead|undefined):Promise<void>{
+  const own=receipt&&reads.get(receipt);if(!own)throw Error('daily_brand_image_read_unconfirmed');await own.validate();
+}

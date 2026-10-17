@@ -1,7 +1,7 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
 import { randomUUID,createHmac } from 'node:crypto';
-import { runCronSocialPost, type NativeCronSocialPost } from '@/lib/cron-dispatch-original';
+import { runCronSocialPost, validateCronImageReadSource, type NativeCronSocialPost, type NativeCronBrandImageRead } from '@/lib/cron-dispatch-original';
 import { runNativeAdminSocialPreview, type NativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
 import { runNativeAdminSocialDraft, type NativeAdminSocialDraft } from '@/lib/admin-social-publish-native';
 
@@ -202,7 +202,9 @@ function validSource(s:SocialSource,platform:string):boolean {
 declare const cronSocialImagePrompt:unique symbol;
 export type CronSocialImagePrompt={readonly[cronSocialImagePrompt]:true};
 type CacheAck={date:string;url:string;source:string;stamp:string};
-type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;writeCache:(imageAttemptId:string,url:string,source:string)=>Promise<CacheAck[]>;prompt?:Promise<CronSocialImagePrompt>;publication?:Promise<unknown>};
+type CronImageSource={id:string;date:string;signal:AbortSignal;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;writeCache:(imageAttemptId:string,url:string,source:string)=>Promise<CacheAck[]>;writePublicationIntent:(url:string,admission:CronPublicationAdmission)=>Promise<void>;writePublication:(postId:string,admission:CronPublicationAdmission)=>Promise<void>;prompt?:Promise<CronSocialImagePrompt>;publication?:Promise<unknown>};
+type CronPublicationAdmission={source:CronImageSource;id:string;stamp:string;accountId:string;validate:()=>Promise<void>};
+const cronPublicationAdmissions=new WeakMap<object,CronPublicationAdmission>();
 type PreparedCronPrompt={source:CronImageSource;prompt:string;imageAttemptId:string;validate:()=>Promise<void>;cache?:CacheAck;use?:Promise<unknown>};
 const cronImageSources=new WeakMap<object,CronImageSource>(),cronImagePrompts=new WeakMap<object,PreparedCronPrompt>();
 
@@ -228,7 +230,7 @@ async function admitPublicationDay(platform:string,account:string,date:string,ki
     if(!Array.isArray(current)||current.length!==1||Object.keys(current[0]).length!==1||current[0].eligible!==true)throw Error('social_publish_unconfirmed');
   };
   const check=async()=>{await validate();await checkRow();await validate();};
-  await check();return {check,checkRow};
+  await check();return {check,checkRow,id,stamp};
 }
 
 // This new publication continuation requires this invocation's own completed
@@ -242,7 +244,8 @@ export function runCronSocialPublication<T>(original:NativeCronSocialPost|undefi
     const platform=own.platform as 'facebook'|'instagram',key=platform==='facebook'?'META_PAGE_ID':'INSTAGRAM_ACCOUNT_ID',account=process.env[key];
     if(!account||!/^\d{1,32}$/.test(account))throw Error('social_publish_unconfirmed');
     const validate=async()=>{if(process.env[key]!==account)throw Error('social_publish_unconfirmed');await own.validate();if(process.env[key]!==account)throw Error('social_publish_unconfirmed');};
-    const {check}=await admitPublicationDay(platform,account,own.date,'cron',own.id,validate);
+    const {check,id,stamp}=await admitPublicationDay(platform,account,own.date,'cron',own.id,validate);
+    cronPublicationAdmissions.set(original!,{source:own,id,stamp,accountId:account,validate:check});
     await check();const result=await run(Object.freeze({date:own.date,platform,accountId:account,content:own.content,validateBeforeDispatch:check,remainingBeforeDispatch:own.remaining}));await check();return result;
   })) as Promise<T>;
 }
@@ -252,7 +255,7 @@ export function generateSocialPost(
   type: PostType,
   original?: NativeCronSocialPost,
 ): Promise<string> {
-  return runCronSocialPost(original,platform,type,async({date,at,checkBeforeDispatch:check,remainingBeforeDispatch:remaining})=>{
+  return runCronSocialPost(original,platform,type,async({date,at,signal,checkBeforeDispatch:check,remainingBeforeDispatch:remaining})=>{
     check();const since=new Date(at-14*86400000),rows=await prisma.$queryRawUnsafe<{source:SocialSource}[]>('SELECT '+sourceSql.replaceAll('$3','$1').replaceAll('$6','$2')+' AS source',platform,since);check();
     if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||!validSource(rows[0].source,platform))throw Error('social_post_unconfirmed');
     const source=rows[0].source,sourceJson=JSON.stringify(source),pillar=pickPillar(source.pillars.map(v=>v.pillar)),context=getNarrativeContext(source),prompt=buildPrompt(platform,pillar),systemPrompt=context?`${VOZ}\n\n${context}`:VOZ;
@@ -278,11 +281,36 @@ export function generateSocialPost(
       SELECT completed.id,history.id AS "historyId" FROM completed CROSS JOIN history`,...args,content,pillar.id);
     if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==2||saved[0].id!==id||!Number.isSafeInteger(saved[0].historyId))throw Error('social_post_unconfirmed');
     const historyId=saved[0].historyId,retainedSource=sourceSql.replace('WHERE channel=$3','WHERE channel=$3 AND id<>$9::integer');
+    // These exceptions exist only after THIS invocation's own complete INSERT
+    // or UPDATE ACK. A persisted row/URL/remote ID never initializes them.
+    let publication:{imageUrl:string;createdStamp:string;postId?:string;publishedStamp?:string}|undefined;
+    const ownPostExclusion=()=>publication?noPriorSocialPost.replace('WHERE platform=$3','WHERE id<>$1 AND platform=$3'):noPriorSocialPost;
+    const narrative=()=>publication?.postId?retainedSource.replace("WHERE status='published'","WHERE status='published' AND id<>$1"):retainedSource;
     const validate=async()=>{
       check();const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='completed'
-        AND content=$7 AND pillar=$8 AND "completedAt" IS NOT NULL AND ${retainedSource}=$5::jsonb AND ${noPriorSocialPost}
-        AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8)) AS eligible`,...args,content,pillar.id,historyId);
+        AND content=$7 AND pillar=$8 AND "completedAt" IS NOT NULL AND ${narrative()}=$5::jsonb AND ${ownPostExclusion()}
+        AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8)
+        ${publication?`AND EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$3 AND content=$7 AND "imageUrl"=$10 AND "createdAt"::text=$11 AND "errorMsg" IS NULL AND ${publication.postId?`status='published' AND "bufferId"=$12 AND "publishedAt"::text=$13`:`status='publishing' AND "bufferId" IS NULL AND "publishedAt" IS NULL`})`:''}) AS eligible`,...args,content,pillar.id,historyId,...(publication?[publication.imageUrl,publication.createdStamp,...(publication.postId?[publication.postId,publication.publishedStamp]:[])]:[]));
       check();if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||rows[0].eligible!==true)throw Error('daily_brand_image_unconfirmed');
+    };
+    const sharedPredicate=(idAt:number,accountAt:number,stampAt:number)=>`EXISTS(SELECT 1 FROM social_publication_daily_attempts WHERE id=$${idAt} AND platform=$3 AND "accountId"=$${accountAt} AND date=$2 AND "ownerKind"='cron' AND "ownerId"=$1 AND state='admitted' AND "createdAt"::text=$${stampAt})`;
+    const sourcePredicate=`EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='completed' AND content=$7 AND pillar=$8 AND "completedAt" IS NOT NULL
+      AND ${retainedSource}=$5::jsonb AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8))`;
+    const writePublicationIntent=async(url:string,shared:CronPublicationAdmission)=>{
+      if(shared.source!==preparedSource||publication)throw Error('social_publish_unconfirmed');await shared.validate();
+      const rows=await prisma.$queryRawUnsafe<{id:string;imageUrl:string;createdStamp:string}[]>(`INSERT INTO social_posts(id,platform,content,"imageUrl",status,"createdAt")
+        SELECT $1,$3,$7,$10,'publishing',timezone('UTC',clock_timestamp()) WHERE ${sourcePredicate} AND ${noPriorSocialPost} AND ${sharedPredicate(11,12,13)}
+        ON CONFLICT(id) DO NOTHING RETURNING id,"imageUrl","createdAt"::text AS "createdStamp"`,...args,content,pillar.id,historyId,url,shared.id,shared.accountId,shared.stamp);
+      if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).sort().join(',')!=='createdStamp,id,imageUrl'||rows[0].id!==id||rows[0].imageUrl!==url||typeof rows[0].createdStamp!=='string'||!rows[0].createdStamp)throw Error('social_publish_unconfirmed');
+      publication={imageUrl:url,createdStamp:rows[0].createdStamp};await shared.validate();
+    };
+    const writePublication=async(postId:string,shared:CronPublicationAdmission)=>{
+      if(shared.source!==preparedSource||!publication||publication.postId)throw Error('social_publish_unconfirmed');await shared.validate();
+      const rows=await prisma.$queryRawUnsafe<{id:string;postId:string;imageUrl:string;publishedStamp:string}[]>(`UPDATE social_posts SET status='published',"bufferId"=$12,"publishedAt"=timezone('UTC',clock_timestamp())
+        WHERE id=$1 AND platform=$3 AND content=$7 AND "imageUrl"=$10 AND "createdAt"::text=$11 AND status='publishing' AND "bufferId" IS NULL AND "publishedAt" IS NULL AND "errorMsg" IS NULL
+        AND ${sourcePredicate} AND ${ownPostExclusion()} AND ${sharedPredicate(13,14,15)} RETURNING id,"bufferId" AS "postId","imageUrl","publishedAt"::text AS "publishedStamp"`,...args,content,pillar.id,historyId,publication.imageUrl,publication.createdStamp,postId,shared.id,shared.accountId,shared.stamp);
+      if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).sort().join(',')!=='id,imageUrl,postId,publishedStamp'||rows[0].id!==id||rows[0].postId!==postId||rows[0].imageUrl!==publication.imageUrl||typeof rows[0].publishedStamp!=='string'||!rows[0].publishedStamp)throw Error('social_publish_unconfirmed');
+      publication={...publication,postId,publishedStamp:rows[0].publishedStamp};await shared.validate();
     };
     // Only this producer's own completed SQL/history ACK issues an image source.
     // Its private native lifetime remains captured;rows never recreate it.
@@ -293,7 +321,8 @@ export function generateSocialPost(
         AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8))
       AND EXISTS(SELECT 1 FROM cron_daily_brand_image_attempts WHERE id=$12 AND date=$2 AND "sourceId"=$1 AND platform=$3 AND slot=$4 AND state='admitted')
       ON CONFLICT(image_date) DO NOTHING RETURNING image_date::text AS date,url,source,created_at::text AS stamp`,...args,content,pillar.id,historyId,url,cacheSource,imageAttemptId);
-    check();cronImageSources.set(original!,{id,date,platform,slot:type,content,validate,remaining,writeCache});
+    const preparedSource:CronImageSource={id,date,signal,platform,slot:type,content,validate,remaining,writeCache,writePublicationIntent,writePublication};
+    check();cronImageSources.set(original!,preparedSource);
     return content;
   });
 }
@@ -369,6 +398,57 @@ export function completeCronBrandImageCache(upload?:import('./cron-brand-image')
 export function consumeCronBrandImageCache<T>(receipt:NativeCronBrandImageCache|undefined,run:(image:Readonly<{date:string;url:string;source:string}>)=>Promise<T>):Promise<T>{
   const own=receipt&&completedCaches.get(receipt);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
   return(own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({date:own.ack.date,url:own.ack.url,source:own.ack.source}));await own.validate();return result;}))as Promise<T>;
+}
+export async function validateCronBrandImageCache(receipt:NativeCronBrandImageCache|undefined):Promise<void>{
+  const own=receipt&&completedCaches.get(receipt);if(!own)throw Error('daily_brand_image_unconfirmed');await own.validate();
+}
+
+declare const nativeCronFacebookPublication:unique symbol;
+export type NativeCronFacebookPublication={readonly[nativeCronFacebookPublication]:true};
+type CronFacebookPublicationDetails=Readonly<{platform:'facebook';date:string;recordId:string;photoId:string;postId:string}>;
+const facebookPublicationAttempts=new WeakMap<object,{read:NativeCronBrandImageRead|undefined;promise:Promise<NativeCronFacebookPublication>}>();
+const facebookPublications=new WeakMap<object,{original:NativeCronSocialPost;details:CronFacebookPublicationDetails;validate:()=>Promise<void>;use?:Promise<unknown>}>();
+
+// Native component only. GET integration and Instagram remain separate work.
+// Source/image/target/day/HTTP/SQL each retain their original continuation;no
+// serialized URL,remote ID or persisted post can construct this final receipt.
+export function publishCronFacebookPhoto(original:NativeCronSocialPost|undefined,read?:NativeCronBrandImageRead):Promise<NativeCronFacebookPublication>{
+  const own=original&&cronImageSources.get(original);
+  if(!original||!own||own.platform!=='facebook'||own.slot!=='morning')return Promise.reject(Error('social_publish_unconfirmed'));
+  const previous=facebookPublicationAttempts.get(original);if(previous)return previous.read===read?previous.promise:Promise.reject(Error('social_publish_unconfirmed'));
+  const pending=Promise.resolve().then(async()=>{
+    const helper=await import('./ideogram-image'),{prepareCronFacebookPhotoTransport}=await import('./cron-facebook-photo-transport');
+    await own.validate();if(read!==undefined)validateCronImageReadSource(original,read);
+    let shared:CronPublicationAdmission|undefined,image:import('./ideogram-image').NativeDailyBrandImage|undefined;
+    const validate=async()=>{
+      if(!shared||shared.source!==own)throw Error('social_publish_unconfirmed');
+      target.check();await shared.validate();if(image)await helper.validateDailyBrandImageSource(original,image);target.check();await shared.validate();
+    };
+    const target=prepareCronFacebookPhotoTransport({signal:own.signal,remaining:own.remaining,validate});target.check();
+    return runCronSocialPublication(original,async context=>{
+      shared=cronPublicationAdmissions.get(original);
+      if(!shared||shared.source!==own||target.accountId!==context.accountId)throw Error('social_publish_unconfirmed');
+      // Occupy the common day before any image prompt/model/download/PUT.
+      await validate();image=await helper.getOrCreateDailyBrandImage(original,read);await validate();
+      const outcome=Object.freeze({});let acknowledged:CronFacebookPublicationDetails|undefined;
+      const result=await helper.consumeDailyBrandImage(image,async resource=>{
+        if(resource.date!==own.date)throw Error('social_publish_unconfirmed');await validate();
+        await own.writePublicationIntent(resource.url,shared!);await validate();
+        const ack=await target.publish({date:own.date,caption:own.content,imageUrl:resource.url});await validate();
+        await own.writePublication(ack.postId,shared!);await validate();
+        acknowledged=Object.freeze({platform:'facebook',date:own.date,recordId:own.id,photoId:ack.photoId,postId:ack.postId});return outcome;
+      });
+      // A previously consumed image cannot substitute a different callback's
+      // result;only THIS callback's exact awaited outcome may issue a receipt.
+      if(result!==outcome||!acknowledged)throw Error('social_publish_unconfirmed');await validate();
+      const cap=Object.freeze({})as NativeCronFacebookPublication;facebookPublications.set(cap,{original,details:acknowledged,validate});return cap;
+    });
+  }).then(cap=>{if(!cap||typeof cap!=='object'||facebookPublications.get(cap)?.original!==original)throw Error('social_publish_unconfirmed');return cap;});
+  facebookPublicationAttempts.set(original,{read,promise:pending});return pending;
+}
+export function consumeCronFacebookPublication<T>(receipt:NativeCronFacebookPublication|undefined,run:(publication:CronFacebookPublicationDetails&{validateBeforeResponse:()=>Promise<void>})=>Promise<T>):Promise<T>{
+  const own=receipt&&facebookPublications.get(receipt);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
+  return(own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({...own.details,validateBeforeResponse:own.validate}));await own.validate();return result;}))as Promise<T>;
 }
 
 export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){

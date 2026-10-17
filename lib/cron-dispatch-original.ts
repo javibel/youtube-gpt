@@ -162,10 +162,10 @@ export function validateCronImageReadSource(source: NativeCronSocialPost | undef
 }
 
 export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,
-  run: (context:{date:string;at:number;platform:'facebook'|'instagram';slot:Slot;checkBeforeDispatch:()=>void;remainingBeforeDispatch:()=>number})=>Promise<string>):Promise<string> {
+  run: (context:{date:string;at:number;signal:AbortSignal;platform:'facebook'|'instagram';slot:Slot;checkBeforeDispatch:()=>void;remainingBeforeDispatch:()=>number})=>Promise<string>):Promise<string> {
   const own=original&&socialPosts.get(original);
   if(!own || own.platform!==platform || own.slot!==slot)return Promise.reject(Error('social_post_unconfirmed'));
-  return own.promise??=Promise.resolve().then(()=>{own.check();return run({date:own.date,at:own.at,platform:own.platform,slot:own.slot,checkBeforeDispatch:own.check,remainingBeforeDispatch:own.remaining});});
+  return own.promise??=Promise.resolve().then(()=>{own.check();return run({date:own.date,at:own.at,signal:own.parent.request.signal,platform:own.platform,slot:own.slot,checkBeforeDispatch:own.check,remainingBeforeDispatch:own.remaining});});
 }
 
 export function runCronDailyIdeasEmail<T>(original: NativeCronDailyIdeasEmail | undefined,
