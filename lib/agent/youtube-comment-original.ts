@@ -10,7 +10,7 @@ export type YoutubeCommentRead={readonly[youtubeCommentRead]:true};
 export type YoutubeCommentSource=Readonly<{threadId:string;commentId:string;channelId:string;videoId:string|null;authorChannelId:string|null;authorName:string;text:string;publishedAt:string;updatedAt:string;canReply:boolean}>;
 export type YoutubeCommentWindow=Readonly<{configured:boolean;pages:number;scanned:number;eligible:number;hasMore:boolean;comments:readonly YoutubeCommentSource[];coverage:'at-most-three-pages-within-original-budget';acceptance:'read-only-not-reply-consent-or-operative-freshness'}>;
 type Context=Readonly<{at:number;signal:AbortSignal;checkBeforeRead:()=>void;remainingBeforeRead:()=>number}>;
-const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),manualRequests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;replyUsed?:boolean;promise?:Promise<unknown>}>();
+const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),manualRequests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;replyUsed?:boolean;draftVetoCount?:number;draftVetoSource?:YoutubeCommentSource;draftVetoPending?:boolean;draftVetoFailed?:boolean;promise?:Promise<unknown>}>();
 const KEY=process.env.YOUTUBE_API_KEY,CHANNEL=process.env.YOUTUBE_CHANNEL_ID,key=KEY?.trim(),channel=CHANNEL?.trim(),nativeFetch=globalThis.fetch;
 const endpoint='https://www.googleapis.com/youtube/v3/commentThreads';
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -71,4 +71,14 @@ export function runYoutubeReplySource<T>(receipt:YoutubeCommentRead|undefined,pu
 // Final projection veto after the original manual POST waits on its SQL source.
 export function validateYoutubeCommentsRead(receipt: YoutubeCommentRead | undefined): void {
  const own=receipt&&reads.get(receipt);if(!own)throw Error('youtube_comments_unconfirmed');own.context.checkBeforeRead();
+}
+
+// At most two negative source re-reads within this same live manual original.
+// Data/read receipts never grant generation or reply authority;the native issuer
+// is separate. A changed representation or lost ACK cannot renew or replace it.
+export async function validateAdminYoutubeDraftComment(receipt:YoutubeCommentRead|undefined,row:YoutubeCommentSource):Promise<void>{
+ const own=receipt&&reads.get(receipt);if(!own||!manualRequests.has(own.original)||!own.window.comments.includes(row)||!row.canReply||own.draftVetoFailed||own.draftVetoPending||own.draftVetoSource&&own.draftVetoSource!==row||(own.draftVetoCount??0)>=2)throw Error('youtube_draft_unconfirmed');
+ own.context.checkBeforeRead();own.draftVetoSource=row;own.draftVetoCount=(own.draftVetoCount??0)+1;own.draftVetoPending=true;
+ try{const url=new URL(endpoint);url.searchParams.set('part','snippet');url.searchParams.set('id',row.threadId);url.searchParams.set('textFormat','plainText');url.searchParams.set('key',key!);const value=parse(await page(url.toString(),own.context),own.context);own.context.checkBeforeRead();if(value.next||value.comments.length!==1||JSON.stringify(value.comments[0])!==JSON.stringify(row))throw Error('youtube_draft_unconfirmed');}
+ catch(error){own.draftVetoFailed=true;throw error;}finally{own.draftVetoPending=false;}
 }

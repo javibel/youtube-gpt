@@ -1,7 +1,7 @@
 import { readNativeSessionCookie } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_EMAIL } from '@/lib/admin-email';
-import type { YoutubeCommentRead, YoutubeCommentWindow } from '@/lib/agent/youtube-comment-original';
+import type { YoutubeCommentRead, YoutubeCommentWindow, YoutubeCommentSource } from '@/lib/agent/youtube-comment-original';
 import type { GmailMetadataRead, GmailTextRead, GmailTextWindow, GmailTextSource } from '@/lib/agent/gmail-metadata-original';
 
 declare const nativeAdminYoutubeComments: unique symbol;
@@ -38,10 +38,20 @@ export function runAdminGmailDraftGeneration<T>(purpose:NativeGmailDraftGenerati
  return(own.promise??=Promise.resolve().then(async()=>{await own.context.validateBeforePrepare();const value=await run(own.context);await own.context.validateBeforePrepare();return value;}))as Promise<T>;
 }
 
+// Manual YouTube generation is distinct from read,Gmail and reply/send.
+declare const nativeAdminYoutubeDraft:unique symbol;
+export type NativeAdminYoutubeDraft={readonly[nativeAdminYoutubeDraft]:true};
+type YoutubeDraftContext=YoutubeReadContext&Readonly<{actorId:string;email:string;sessionRef:string;commandRef:string;verifiedAt:number;source:YoutubeCommentSource;validateBeforeGenerate:()=>Promise<void>;validateSource:()=>Promise<void>}>;
+const youtubeDraftPurposes=new WeakMap<object,{context:YoutubeDraftContext;promise?:Promise<unknown>}>();
+export function runAdminYoutubeDraft<T>(purpose:NativeAdminYoutubeDraft|undefined,run:(context:YoutubeDraftContext)=>Promise<T>):Promise<T>{
+ const own=purpose&&youtubeDraftPurposes.get(purpose);if(!own)return Promise.reject(Error('youtube_draft_unconfirmed'));
+ return(own.promise??=Promise.resolve().then(async()=>{await own.context.validateBeforeGenerate();const value=await run(own.context);await own.context.validateBeforeGenerate();return value;}))as Promise<T>;
+}
+
 type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const gmailPurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
-const requests = new WeakMap<Request, Promise<Response>>(),draftRequests=new WeakMap<Request,Promise<Response>>(),generationRequests=new WeakMap<Request,Promise<Response>>();
+const requests = new WeakMap<Request, Promise<Response>>(),draftRequests=new WeakMap<Request,Promise<Response>>(),generationRequests=new WeakMap<Request,Promise<Response>>(),youtubeDraftRequests=new WeakMap<Request,Promise<Response>>();
 
 // A callback may consume only a purpose already issued inside the authenticated
 // POST below. Neither callbacks nor serialized selectors can create that purpose.
@@ -69,15 +79,16 @@ const messagesUnavailable = () => Response.json({ ok: false, error: 'social_mess
 export function handleAdminSocialMessages(request:Request):Promise<Response>{return handleMessages(request,'read');}
 export function handleAdminSocialMessagesDraftSource(request:Request):Promise<Response>{return handleMessages(request,'source');}
 export function handleAdminSocialMessagesDraft(request:Request):Promise<Response>{return handleMessages(request,'generate');}
-function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise<Response>{
-  const isDraft=mode!=='read',isGeneration=mode==='generate';
-  const originals=isGeneration?generationRequests:isDraft?draftRequests:requests,commandHeader=isGeneration?'x-ytv-social-messages-draft-command':isDraft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command';
-  const unavailable=isDraft?()=>Response.json({ok:false,error:isGeneration?'social_messages_draft_unavailable':'social_messages_draft_source_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):messagesUnavailable;
+export function handleAdminSocialYoutubeDraft(request:Request):Promise<Response>{return handleMessages(request,'youtube');}
+function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube'):Promise<Response>{
+  const isDraft=mode!=='read',isGeneration=mode==='generate',isYoutube=mode==='youtube';
+  const originals=isYoutube?youtubeDraftRequests:isGeneration?generationRequests:isDraft?draftRequests:requests,commandHeader=isYoutube?'x-ytv-social-youtube-draft-command':isGeneration?'x-ytv-social-messages-draft-command':isDraft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command';
+  const unavailable=isDraft?()=>Response.json({ok:false,error:isYoutube?'social_youtube_draft_unavailable':isGeneration?'social_messages_draft_unavailable':'social_messages_draft_source_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):messagesUnavailable;
   const previous = originals.get(request);
   if (previous) return previous;
   const promise = (async () => {
     const at = Date.now(), started = performance.now(), config = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
-    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET, textEnabled=process.env.GMAIL_TEXT_READ_ENABLED,draftEnabled=process.env.MESSAGES_DRAFT_PREPARE_ENABLED,generationEnabled=process.env.MESSAGES_DRAFT_GENERATE_ENABLED;
+    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET, textEnabled=process.env.GMAIL_TEXT_READ_ENABLED,draftEnabled=process.env.MESSAGES_DRAFT_PREPARE_ENABLED,generationEnabled=process.env.MESSAGES_DRAFT_GENERATE_ENABLED,youtubeDraftEnabled=process.env.YOUTUBE_DRAFT_GENERATE_ENABLED;
     const cookie = request.headers.get('cookie'), command = request.headers.get(commandHeader);
     const headerOrigin = request.headers.get('origin'), contentType = request.headers.get('content-type'), url = request.url;
     let until = at + 55000, retired = false, timer: ReturnType<typeof setTimeout> | undefined, rejectStop!: (error: Error) => void;
@@ -86,11 +97,11 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise
     const retire = () => { if (retired) return; retired = true; clearTimeout(timer); rejectStop(Error('social_messages_unconfirmed')); };
     const check = () => {
       if (retired || request.signal.aborted || Date.now() < at || Date.now() >= until || performance.now() < started || performance.now() >= started + 55000
-        || mode==='source'&&process.env.MESSAGES_DRAFT_PREPARE_ENABLED!==draftEnabled || isGeneration&&process.env.MESSAGES_DRAFT_GENERATE_ENABLED!==generationEnabled
+        || isYoutube&&process.env.YOUTUBE_DRAFT_GENERATE_ENABLED!==youtubeDraftEnabled || mode==='source'&&process.env.MESSAGES_DRAFT_PREPARE_ENABLED!==draftEnabled || isGeneration&&process.env.MESSAGES_DRAFT_GENERATE_ENABLED!==generationEnabled
         || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== config || process.env.ADMIN_EMAIL !== adminConfig || process.env.AUTH_SECRET !== secret || process.env.GMAIL_TEXT_READ_ENABLED !== textEnabled
         || request.method !== 'POST' || request.url !== url || request.headers.get('cookie') !== cookie || request.headers.get('origin') !== headerOrigin
         || request.headers.get('content-type') !== contentType || request.headers.get(commandHeader) !== command
-        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command','x-ytv-social-messages-command','x-ytv-social-messages-draft-source-command','x-ytv-social-messages-draft-command'].some(key => key!==commandHeader&&request.headers.has(key))) throw Error('social_messages_unconfirmed');
+        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command','x-ytv-social-messages-command','x-ytv-social-messages-draft-source-command','x-ytv-social-messages-draft-command','x-ytv-social-youtube-draft-command'].some(key => key!==commandHeader&&request.headers.has(key))) throw Error('social_messages_unconfirmed');
     };
     const arm = () => { clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), started + 55000 - performance.now()))); };
     const wait = async <T,>(run: () => Promise<T>): Promise<T> => {
@@ -131,7 +142,7 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise
       for (const chunk of chunks) { raw.set(chunk, position); position += chunk.byteLength; }
       const input: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw));
       if(!input||typeof input!=='object'||Array.isArray(input))return denied();
-      if(isDraft){if(Object.keys(input).sort().join(',')!=='action,platform'||(input as {action:unknown}).action!==(isGeneration?'messages-draft':'messages-draft-source')||(input as {platform:unknown}).platform!=='gmail')return denied();}
+      if(isDraft){if(Object.keys(input).sort().join(',')!=='action,platform'||(input as {action:unknown}).action!==(isYoutube?'messages-youtube-draft':isGeneration?'messages-draft':'messages-draft-source')||(input as {platform:unknown}).platform!==(isYoutube?'youtube':'gmail'))return denied();}
       else if(Object.keys(input).join(',')!=='action'||(input as {action:unknown}).action!=='messages')return denied();
       const native = await wait(() => readNativeSessionCookie(new Request(new URL('/api/auth/session', origin.origin), { headers: { cookie }, signal: request.signal })));
       if (!native || typeof native !== 'object' || Array.isArray(native)) return denied();
@@ -146,15 +157,28 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise
         || !Number.isFinite(account.emailVerified.getTime()) || account.emailVerified.getTime() < 0 || account.emailVerified.getTime() > at) return denied();
       const verifiedAt = account.emailVerified.getTime();
       check();
-      if(mode==='source'&&draftEnabled!=='true'||isGeneration&&generationEnabled!=='true')return unavailable();
+      if(mode==='source'&&draftEnabled!=='true'||isGeneration&&generationEnabled!=='true'||isYoutube&&youtubeDraftEnabled!=='true')return unavailable();
+      let youtubeSource:YoutubeCommentSource|undefined,validateDraftSource:((receipt:YoutubeCommentRead,source:YoutubeCommentSource)=>Promise<void>)|undefined;
       let receipt:YoutubeCommentRead|undefined,coverage:Omit<YoutubeCommentWindow,'comments'>|undefined,validateYoutubeCommentsRead:((value:YoutubeCommentRead)=>void)|undefined;
-      if(!isDraft){
+      if(!isDraft||isYoutube){
         const purpose=Object.freeze({})as NativeAdminYoutubeComments;
         youtubePurposes.set(purpose,{context:Object.freeze({at,signal:request.signal,checkBeforeRead:check,remainingBeforeRead:()=>{check();return Math.min(until-Date.now(),started+55000-performance.now());}})});
         const reader=await wait(()=>import('@/lib/agent/youtube-comment-original'));
         receipt=await wait(()=>reader.readAdminYoutubeComments(purpose));
-        coverage=await wait(()=>reader.consumeYoutubeComments(receipt,async({comments:_comments,...window})=>Object.freeze(window)));
-        validateYoutubeCommentsRead=reader.validateYoutubeCommentsRead;
+        coverage=await wait(()=>reader.consumeYoutubeComments(receipt,async({comments,...window})=>{if(isYoutube)youtubeSource=comments.find(v=>v.canReply);return Object.freeze(window);}));
+        validateYoutubeCommentsRead=reader.validateYoutubeCommentsRead;validateDraftSource=reader.validateAdminYoutubeDraftComment;
+      }
+      if(isYoutube){
+        if(!receipt||!youtubeSource||!coverage?.configured)return unavailable();
+        const live=()=>{check();validateYoutubeCommentsRead!(receipt!);};
+        const validateBeforeGenerate=async()=>{live();const row=await prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}});live();if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)throw Error('youtube_draft_unconfirmed');};
+        await wait(validateBeforeGenerate);
+        const source=youtubeSource,purpose=Object.freeze({})as NativeAdminYoutubeDraft;
+        youtubeDraftPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,verifiedAt,source,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforeGenerate,validateSource:()=>validateDraftSource!(receipt!,source)})});
+        const producer=await wait(()=>import('@/lib/agent/youtube-draft-original'));
+        const result=await wait(()=>producer.generateAdminYoutubeDraft(purpose));
+        const summary=await wait(()=>producer.consumeAdminYoutubeDraft(result,async()=>Object.freeze({generated:1,platform:'youtube',acceptance:'private-draft-only-no-reply-or-operative-acceptance'})));
+        live();const response=Response.json({ok:false,error:'social_youtube_draft_unavailable',youtubeDraft:summary},{status:503,headers:{'Cache-Control':'no-store'}});live();return response;
       }
       const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
       gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
