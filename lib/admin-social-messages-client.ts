@@ -33,7 +33,7 @@ function partial(value: Record<string, unknown>): SocialMessagesPartialData {
     const t=value.gmailText;
     if(g.status!=='read-only-metadata'||!object(t,['configured','read','skipped','coverage','content','acceptance'])||t.configured!==true
       ||!integer(t.read)||!integer(t.skipped)||t.read+t.skipped!==g.scanned||t.read+t.skipped>10
-      ||t.coverage!=='at-most-ten-root-inline-text-plain-only'||t.content!=='utf8-or-ascii-no-html-multipart-or-attachments'
+      ||t.coverage!=='at-most-ten-root-or-uniform-plain-mixed-messages'||t.content!=='utf8-or-ascii-plain-mixed-no-html-alternatives-or-attachments'
       ||t.acceptance!=='data-only-not-draft-send-consent-or-operative-freshness')throw Error('Unconfirmed social messages');
     g=Object.freeze({...g,text:Object.freeze({read:t.read,skipped:t.skipped})});
   }
