@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, _issueSocialPost, _issueBrandImageRead, issueMorningSocial, issueVerificationReminders) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, _issueSocialPost, _issueBrandImageRead, issueMorningSocial, issueVerificationReminders, issueReengagement) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -52,11 +52,12 @@ export async function GET(request: Request) {
     if(typeof verifyReminders!=='number'){results.verificationReminderCoverage=verifyReminders;if(verifyReminders.unconfirmed>0)errors.push('Verification reminders unconfirmed');}
 
     // 0c. Re-engagement emails to dormant activated users (gated by REENGAGEMENT_ENABLED)
-    const reengaged = await step(() => sendReengagementEmails()).catch(err => {
+    const reengaged = await step(() => sendReengagementEmails(issueReengagement())).catch(err => {
       errors.push(`Reengagement: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
-    results.reengaged = reengaged;
+    results.reengaged = typeof reengaged==='number'?reengaged:reengaged.providerAccepted;
+    if(typeof reengaged!=='number'){results.reengagementCoverage=reengaged;if(reengaged.unconfirmed>0)errors.push('Reengagement unconfirmed');}
 
     // 1. Generate daily tip
     await step(() => generateDailyTipOriginal(issueDailyTip())).catch(err =>

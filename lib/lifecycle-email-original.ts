@@ -69,7 +69,7 @@ export function dispatchLifecycleOriginal(original: LifecycleOriginal): Promise<
                 AND (s."stripeCustomerId" IS DISTINCT FROM 'manual_admin' OR s."currentPeriodEnd">c.now))
               AND NOT EXISTS (SELECT 1 FROM email_logs l WHERE l."userId"=u.id
                 AND ((l.sequence=$3 AND l.step=$4)
-                  OR (l.sequence IN ('conv','onboarding','react','feedback') AND l."sentAt">c.now-INTERVAL '1 day')
+                  OR (l.sequence IN ('conv','onboarding','react','feedback','reengagement') AND l."sentAt">c.now-INTERVAL '1 day')
                   OR ($3='conv' AND l.sequence='conv' AND l."sentAt">c.now-INTERVAL '14 days')))
               AND ($4<>'c2' OR (u."createdAt"<=c.now-INTERVAL '60 days'
                 AND (SELECT count(*) FROM generations g WHERE g."userId"=u.id)>=16))
