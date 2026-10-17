@@ -6,6 +6,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
+import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
 
 type SocialPost = {
   id: string; platform: string; content: string; status: string;
@@ -75,10 +76,10 @@ export default function SocialAdminPage() {
   const router = useRouter();
   const [data, setData] = useState<AdminData | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState<string | null>(null);
   const actionInFlight=useRef(false);
   const preview = useAdminSocialPreview(session,status,actionInFlight);
   const publication = useAdminSocialPublication(session,status,actionInFlight);
+  const messages = useAdminSocialMessages(session,status,actionInFlight);
 
   const addLog = useCallback((type: LogEntry['type'], msg: string) => {
     setLogs(prev => [{ type, msg, ts: new Date().toLocaleTimeString('es-ES') }, ...prev].slice(0, 100));
@@ -102,24 +103,6 @@ export default function SocialAdminPage() {
     return () => clearInterval(t);
   }, [fetchData]);
 
-  const runAction = async (action: 'messages') => {
-    if(actionInFlight.current)return;
-    actionInFlight.current=true;
-    setLoading(action);
-    addLog('info', `Ejecutando ${action}...`);
-    try {
-      const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
-      const result = await res.json();
-      if (result.ok) {
-        addLog('success', `✓ ${action} completado`);
-        await fetchData();
-      } else {
-        addLog('error', `✗ ${result.error ?? 'Error desconocido'}`);
-      }
-    } catch (err) {
-      addLog('error', `✗ Red: ${err instanceof Error ? err.message : String(err)}`);
-    } finally { actionInFlight.current=false;setLoading(null); }
-  };
 
   if (status === 'loading') {
     return (
@@ -176,13 +159,14 @@ export default function SocialAdminPage() {
             <button onClick={() => publication.start('evening')} disabled={!publication.canStart} className="btn-offset px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
               Publicar tarde
             </button>
-            <button onClick={() => runAction('messages')} disabled={loading === 'messages'||publication.running||preview.running} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
-              {loading === 'messages' ? 'Revisando...' : 'Revisar mensajes'}
+            <button onClick={messages.start} disabled={!messages.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
+              {messages.running ? 'Revisando...' : 'Revisar mensajes'}
             </button>
             <button onClick={preview.start} disabled={!preview.canStart} className="px-5 py-2.5 text-sm rounded-xl font-semibold transition" style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
               Test (sin publicar)
             </button>
           </div>
+          {messages.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{messages.message}</p>}
           {preview.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{preview.message}</p>}
           {publication.message && <p role="status" className="mt-3 text-sm" style={{color:publication.data?'#22c55e':'var(--text-dim)'}}>{publication.message}</p>}
         </section>

@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { runGmailAgent } from '@/lib/agent/gmail-agent';
-import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { requireAdmin } from '@/lib/auth-guards';
 import { authorizeNativeAdminSocialPreview, checkNativeAdminSocialPreview, closeNativeAdminSocialPreview, acknowledgeNativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
 import { generateAdminSocialPreview } from '@/lib/agent/content-generator';
@@ -8,6 +6,10 @@ import { generateAdminSocialPreview } from '@/lib/agent/content-generator';
 export const maxDuration=60;
 
 export async function POST(request: Request) {
+  if (request.headers.has('x-ytv-social-messages-command')) {
+    const { handleAdminSocialMessages } = await import('@/lib/admin-social-messages');
+    return handleAdminSocialMessages(request);
+  }
   const gate = await requireAdmin();
   if (!gate.ok) return gate.response;
 
@@ -34,15 +36,8 @@ export async function POST(request: Request) {
     }
 
     if (action === 'messages') {
-      const [gmail, youtube] = await Promise.allSettled([
-        runGmailAgent(),
-        runYoutubeAgent(),
-      ]);
-      return NextResponse.json({
-        ok: true,
-        gmail: gmail.status === 'fulfilled' ? gmail.value : { error: String(gmail.reason) },
-        youtube: youtube.status === 'fulfilled' ? youtube.value : { error: String(youtube.reason) },
-      });
+      const { handleAdminSocialMessages } = await import('@/lib/admin-social-messages');
+      return handleAdminSocialMessages(request);
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
