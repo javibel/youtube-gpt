@@ -10,6 +10,8 @@ declare const nativeCronDailyIdeasEmail: unique symbol;
 export type NativeCronDailyIdeasEmail = { readonly [nativeCronDailyIdeasEmail]: true };
 declare const nativeCronSocialPost: unique symbol;
 export type NativeCronSocialPost = { readonly [nativeCronSocialPost]: true };
+declare const nativeCronBrandImageRead: unique symbol;
+export type NativeCronBrandImageRead = { readonly [nativeCronBrandImageRead]: true };
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
   at: number; until: number; started: number; deadline: number; used: boolean };
@@ -18,6 +20,7 @@ const dailyTips = new WeakMap<object, { date: string; check: () => void; promise
 const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
 const socialPosts = new WeakMap<object, { date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
+const imageReads = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
   try {
@@ -46,7 +49,8 @@ export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronD
 export async function runCronDispatch<T>(original: NativeCronDispatch | null,
   run: (step: <V>(work: () => Promise<V>) => Promise<V>, issueDailyTip: () => NativeCronDailyTip, issueDailyIdeas: () => NativeCronDailyIdeas,
     issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
-    issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost) => Promise<T>): Promise<T> {
+    issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost,
+    issueBrandImageRead: () => NativeCronBrandImageRead) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -120,8 +124,33 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
       remaining:()=>{checkSocial();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));}});
     return child;
   };
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost); check(); return result; }
+  let imageReadIssued = false;
+  const issueBrandImageRead = (): NativeCronBrandImageRead => {
+    check();
+    if (imageReadIssued) throw Error('daily_brand_image_read_unconfirmed');
+    imageReadIssued = true;
+    const child = Object.freeze({}) as NativeCronBrandImageRead;
+    const date = new Date(own.at).toISOString().slice(0, 10);
+    imageReads.set(child, { date, check: () => {
+      check();
+      if (new Date(Date.now()).toISOString().slice(0, 10) !== date) throw Error('daily_brand_image_read_unconfirmed');
+    } });
+    return child;
+  };
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead); check(); return result; }
   finally { retired = true; }
+}
+
+// A fresh authenticated GET may read today's resource. This purpose carries no
+// producer completion, retry, upload or publication authority from the old GET.
+export function runCronBrandImageRead<T>(original: NativeCronBrandImageRead | undefined,
+  run: (context: { date: string; checkBeforeRead: () => void }) => Promise<T>): Promise<T> {
+  const own = original && imageReads.get(original);
+  if (!own) return Promise.reject(Error('daily_brand_image_read_unconfirmed'));
+  return (own.promise ??= Promise.resolve().then(() => {
+    own.check();
+    return run({ date: own.date, checkBeforeRead: own.check });
+  })) as Promise<T>;
 }
 
 export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,
