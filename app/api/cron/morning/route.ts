@@ -2,13 +2,7 @@ import { authorizeCronDispatch, runCronDispatch } from '@/lib/cron-dispatch-orig
 import { generateDailyTipOriginal } from '@/lib/daily-tip-original';
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
-import {
-  publishToFacebook,
-  publishToFacebookWithImage,
-  publishToInstagram,
-} from '@/lib/agent/meta-agent';
-import { getOrCreateDailyBrandImage } from '@/lib/agent/ideogram-image';
-import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
+import { getOrCreateDailyBrandImage, consumeDailyBrandImage } from '@/lib/agent/ideogram-image';
 // Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
@@ -87,49 +81,33 @@ export async function GET(request: Request) {
     if (typeof ideasEmailed !== 'number') results.dailyIdeasEmailCoverage = ideasEmailed;
 
     // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
+    const facebookOriginal=issueSocialPost('facebook'),instagramOriginal=issueSocialPost('instagram');
     const [facebook, instagram] = await Promise.allSettled([
-      step(() => generateSocialPost('facebook', 'morning', issueSocialPost('facebook'))),
-      step(() => generateSocialPost('instagram', 'morning', issueSocialPost('instagram'))),
+      step(() => generateSocialPost('facebook', 'morning', facebookOriginal)),
+      step(() => generateSocialPost('instagram', 'morning', instagramOriginal)),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
-    const tw = null; // Twitter API desactivada — migrado a Puppeteer local-agent
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // 3. One shared AI image for the whole day (FB + IG + the local-agent Twitter
-    //    post all reuse it) to avoid duplicate Ideogram generations. Falls back to a
-    //    per-platform Satori infographic only if Ideogram itself fails.
-    const sharedAiUrl = (fb || ig) ? await step(() => getOrCreateDailyBrandImage((fb || ig) as string)) : null;
-    const fbImageUrl = fb ? (sharedAiUrl ?? buildInfographicUrl(fb)) : null;
-    const igImageUrl = ig ? (sharedAiUrl ?? buildInfographicUrl(ig)) : null;
-
-    // 3a. Publish Facebook with AI image (via Graph API)
-    if (fb && fbImageUrl) {
-      const fbResult = await step(() => publishToFacebookWithImage(fb, fbImageUrl));
-      results.facebook = fbResult;
-      if (!fbResult.success && !fbResult.skipped) errors.push(`Facebook: ${fbResult.error}`);
+    // The source that actually completed owns prompt,image,upload and cache.
+    // A raw URL or completed image is never publication authority.
+    if (fb || ig) {
+      try {
+        const image=await step(()=>getOrCreateDailyBrandImage(fb?facebookOriginal:instagramOriginal));
+        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>({date:own.date,cacheCompleted:true})));
+      } catch {
+        return NextResponse.json({ok:false,error:'daily_brand_image_unconfirmed',results,errors},{status:503});
+      }
+      // The native cron publisher is still pending. Do not enter legacy Meta,
+      // a fallback image,notifications or an uncertain publication retry.
+      if(fb)results.facebook={success:false,error:'social_publish_unconfirmed'};
+      if(ig)results.instagram={success:false,error:'social_publish_unconfirmed'};
+      return NextResponse.json({ok:false,error:'social_publish_unconfirmed',results,errors},{status:503});
     }
-
-    // 3b. Publish Instagram + Twitter in parallel (both independent)
-    const socialPublishTasks: Promise<void>[] = [];
-
-    if (ig) {
-      socialPublishTasks.push((async () => {
-        const igResult = await step(() => publishToInstagram(ig, igImageUrl ?? undefined));
-        results.instagram = igResult;
-        if (!igResult.success && !igResult.skipped) errors.push(`Instagram: ${igResult.error}`);
-      })());
-    }
-
-    // Twitter/X — DESACTIVADO: API de pago, migrado a Puppeteer en local-agent (brand-twitter-post.js)
-    if (tw) {
-      results.twitter = { success: false, error: 'Twitter API desactivada — publicación via Puppeteer en local-agent' };
-    }
-
-    await Promise.allSettled(socialPublishTasks);
 
     // 6. Reporte diario al owner — DESACTIVADO 2026-08-30 (decisión Javier).
     //    Era el segundo reporte diario redundante (el otro, local-agent/reports.js,
