@@ -1584,3 +1584,18 @@ model ChannelSnapshotAttempt {
   @@unique([userId, date])
   @@map("channel_snapshot_attempts")
 }
+
+model RetentionDeletionAttempt {
+  id String @id
+  kind String
+  rowKey String
+  version String
+  ownerId String?
+  source Json
+  state String @default("pending")
+  deleted Boolean @default(false)
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@unique([kind, rowKey, version])
+  @@map("retention_deletion_attempts")
+}
