@@ -153,6 +153,7 @@ export default function SocialAdminPage() {
               <div>
                 <p>{messages.data.gmail.status==='unavailable'?'Gmail: lectura no disponible.':
                   'Gmail: '+messages.data.gmail.scanned+' '+(messages.data.gmail.scanned===1?'mensaje':'mensajes')+' (sólo cabeceras).'}</p>
+                {messages.data.gmail.status==='read-only-metadata'&&messages.data.gmail.text&&<p>Texto plano simple: {messages.data.gmail.text.read} leídos. Otros formatos sin extraer: {messages.data.gmail.text.skipped}.</p>}
                 {messages.data.gmail.status==='read-only-metadata'&&messages.data.gmail.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
               </div>
             </section>

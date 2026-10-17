@@ -1,11 +1,20 @@
 import { readNativeSessionCookie } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_EMAIL } from '@/lib/admin-email';
+import type { GmailMetadataRead, GmailTextRead, GmailTextWindow } from '@/lib/agent/gmail-metadata-original';
 
 declare const nativeAdminYoutubeComments: unique symbol;
 export type NativeAdminYoutubeComments = { readonly [nativeAdminYoutubeComments]: true };
 declare const nativeAdminGmailMetadata: unique symbol;
 export type NativeAdminGmailMetadata = { readonly [nativeAdminGmailMetadata]: true };
+declare const nativeAdminGmailText: unique symbol;
+export type NativeAdminGmailText = {readonly [nativeAdminGmailText]:true};
+type GmailTextContext = YoutubeReadContext & Readonly<{metadataPurpose:NativeAdminGmailMetadata;metadataRead:GmailMetadataRead}>;
+const gmailTextPurposes = new WeakMap<object,{context:GmailTextContext;promise?:Promise<unknown>}>();
+export function runAdminGmailText<T>(purpose:NativeAdminGmailText|undefined,run:(context:GmailTextContext)=>Promise<T>):Promise<T>{
+  const own=purpose&&gmailTextPurposes.get(purpose);if(!own)return Promise.reject(Error('gmail_text_unconfirmed'));
+  return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeRead();const value=await run(own.context);own.context.checkBeforeRead();return value;})) as Promise<T>;
+}
 type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const gmailPurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
@@ -39,7 +48,7 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
   if (previous) return previous;
   const promise = (async () => {
     const at = Date.now(), started = performance.now(), config = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
-    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET;
+    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET, textEnabled=process.env.GMAIL_TEXT_READ_ENABLED;
     const cookie = request.headers.get('cookie'), command = request.headers.get('x-ytv-social-messages-command');
     const headerOrigin = request.headers.get('origin'), contentType = request.headers.get('content-type'), url = request.url;
     let until = at + 55000, retired = false, timer: ReturnType<typeof setTimeout> | undefined, rejectStop!: (error: Error) => void;
@@ -48,7 +57,7 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
     const retire = () => { if (retired) return; retired = true; clearTimeout(timer); rejectStop(Error('social_messages_unconfirmed')); };
     const check = () => {
       if (retired || request.signal.aborted || Date.now() < at || Date.now() >= until || performance.now() < started || performance.now() >= started + 55000
-        || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== config || process.env.ADMIN_EMAIL !== adminConfig || process.env.AUTH_SECRET !== secret
+        || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== config || process.env.ADMIN_EMAIL !== adminConfig || process.env.AUTH_SECRET !== secret || process.env.GMAIL_TEXT_READ_ENABLED !== textEnabled
         || request.method !== 'POST' || request.url !== url || request.headers.get('cookie') !== cookie || request.headers.get('origin') !== headerOrigin
         || request.headers.get('content-type') !== contentType || request.headers.get('x-ytv-social-messages-command') !== command
         || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command'].some(key => request.headers.has(key))) throw Error('social_messages_unconfirmed');
@@ -116,20 +125,28 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
       gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
         remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
-      const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
+      const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead, readGmailText, consumeGmailText, validateGmailTextRead } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
       const gmailReceipt = await wait(() => readGmailMetadata(gmailPurpose));
       const gmail = await wait(() => consumeGmailMetadata(gmailReceipt, async ({ messages: _messages, ...window }) => Object.freeze(window)));
       if (!coverage.configured && !gmail.configured) return unavailable();
+      let textReceipt:GmailTextRead|undefined,textCoverage:Omit<GmailTextWindow,'messages'>|undefined;
+      if(textEnabled==='true'&&gmail.configured){
+        const textPurpose=Object.freeze({}) as NativeAdminGmailText;
+        gmailTextPurposes.set(textPurpose,{context:Object.freeze({...gmailPurposes.get(gmailPurpose)!.context,metadataPurpose:gmailPurpose,metadataRead:gmailReceipt})});
+        textReceipt=await wait(()=>readGmailText(textPurpose));
+        textCoverage=await wait(()=>consumeGmailText(textReceipt,async({messages:_messages,...window})=>Object.freeze(window)));
+      }
       // Re-reading the original account is a veto after network/body waits. It
       // cannot renew the session, verification date or original request budget.
       const current = await wait(() => prisma.user.findUnique({ where: { id }, select: { id: true, email: true, emailVerified: true } }));
       if (!current || current.id !== id || current.email !== email || !(current.emailVerified instanceof Date)
         || current.emailVerified.getTime() !== verifiedAt) return denied();
       check();
-      validateYoutubeCommentsRead(receipt); validateGmailMetadataRead(gmailReceipt);
+      validateYoutubeCommentsRead(receipt); validateGmailMetadataRead(gmailReceipt);if(textReceipt)validateGmailTextRead(textReceipt);
       const response = Response.json({ ok: false, error: 'social_messages_unavailable',
         youtube: coverage.configured ? { status: 'read-only', coverage } : { status: 'unavailable' },
         gmail: gmail.configured ? { status: 'read-only-metadata', coverage: gmail } : { status: 'unavailable' },
+        ...(textCoverage?{gmailText:textCoverage}:{}),
         messagesRead: { commandRef: command, userId: id, email, sessionRef: authSessionRef, asOf: at, expiresAt: until } },
         { status: 503, headers: { 'Cache-Control': 'no-store' } });
       check(); return response;

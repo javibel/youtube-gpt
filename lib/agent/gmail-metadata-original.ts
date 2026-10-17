@@ -3,7 +3,7 @@
  * API contracts: developers.google.com/workspace/gmail/api/reference/rest/v1/
  * users.messages/list, users.messages/get, users/getProfile and Format.
  */
-import type { NativeAdminGmailMetadata } from '@/lib/admin-social-messages';
+import type { NativeAdminGmailMetadata, NativeAdminGmailText } from '@/lib/admin-social-messages';
 
 declare const gmailMetadataRead: unique symbol;
 export type GmailMetadataRead = { readonly [gmailMetadataRead]: true };
@@ -13,8 +13,8 @@ export type GmailMetadataWindow = Readonly<{ configured: boolean; pages: number;
   content: 'selected-headers-only-no-body-or-attachments'; acceptance: 'read-only-not-draft-send-consent-or-operative-freshness' }>;
 type Context = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const requests = new WeakMap<object, Promise<GmailMetadataRead>>();
-const reads = new WeakMap<object, { original: object; context: Context; window: GmailMetadataWindow; promise?: Promise<unknown> }>();
-const raw = Object.freeze({ GMAIL_READ_ENABLED: process.env.GMAIL_READ_ENABLED, GMAIL_READ_MAILBOX: process.env.GMAIL_READ_MAILBOX,
+const reads = new WeakMap<object, { original: object; context: Context; window: GmailMetadataWindow; full?:(source:GmailMetadataSource)=>Promise<unknown>; promise?: Promise<unknown> }>();
+const raw = Object.freeze({ GMAIL_READ_ENABLED: process.env.GMAIL_READ_ENABLED, GMAIL_TEXT_READ_ENABLED:process.env.GMAIL_TEXT_READ_ENABLED, GMAIL_READ_MAILBOX: process.env.GMAIL_READ_MAILBOX,
   GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN });
 const nativeFetch = globalThis.fetch, scope = 'https://www.googleapis.com/auth/gmail.readonly';
 const base = 'https://gmail.googleapis.com/gmail/v1/users/me', tokenUrl = 'https://oauth2.googleapis.com/token';
@@ -86,6 +86,7 @@ export function readGmailMetadata(original?: NativeAdminGmailMetadata): Promise<
       const configured = raw.GMAIL_READ_ENABLED === 'true' && typeof mailbox === 'string' && mailbox.length <= 254
         && /^[a-z0-9.!#$%&'*+\/=?^_\x60{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(mailbox)
         && credential(raw.GMAIL_CLIENT_ID) && credential(raw.GMAIL_CLIENT_SECRET) && credential(raw.GMAIL_REFRESH_TOKEN);
+      let full:((source:GmailMetadataSource)=>Promise<unknown>)|undefined;
       let receiptContext: Context = context; let pages = 0, hasMore = false; const messages: GmailMetadataSource[] = [];
       if (configured) {
         const tokenAt = Date.now(), tokenStarted = performance.now();
@@ -99,6 +100,13 @@ export function readGmailMetadata(original?: NativeAdminGmailMetadata): Promise<
         const authorized = Object.freeze({ ...context, checkBeforeRead: live, remainingBeforeRead: () => { live(); return Math.min(context.remainingBeforeRead(), tokenUntil - Date.now(), tokenDeadline - performance.now()); } });
         receiptContext = authorized;
         const headers = Object.freeze({ Authorization: 'Bearer ' + token.access_token, Accept: 'application/json' });
+        full=(source:GmailMetadataSource)=>{
+          live();if(!messages.includes(source))return Promise.reject(Error('gmail_text_unconfirmed'));
+          const url=new URL(base+'/messages/'+source.id);url.searchParams.set('format','full');
+          // Root inline data only. Subpart and external attachment data are not requested.
+          url.searchParams.set('fields','id,threadId,labelIds,payload(mimeType,filename,headers,body(size,data,attachmentId),parts(mimeType,filename,body(size,attachmentId)))');
+          return json(url.toString(),{method:'GET',headers},authorized);
+        };
         const profile = await json(base + '/profile', { method: 'GET', headers }, authorized); live();
         if (!object(profile) || typeof profile.emailAddress !== 'string' || profile.emailAddress.toLowerCase() !== mailbox) throw Error('gmail_metadata_unconfirmed');
         const url = new URL(base + '/messages'); url.searchParams.set('q', 'is:unread in:inbox -from:' + mailbox); url.searchParams.set('maxResults', '10'); url.searchParams.set('includeSpamTrash', 'false');
@@ -118,7 +126,7 @@ export function readGmailMetadata(original?: NativeAdminGmailMetadata): Promise<
       }
       receiptContext.checkBeforeRead(); const window: GmailMetadataWindow = Object.freeze({ configured, pages, scanned: messages.length, hasMore, messages: Object.freeze(messages),
         coverage: 'at-most-ten-unread-inbox-messages-one-list-page', content: 'selected-headers-only-no-body-or-attachments', acceptance: 'read-only-not-draft-send-consent-or-operative-freshness' });
-      const receipt = Object.freeze({}) as GmailMetadataRead; reads.set(receipt, { original, context: receiptContext, window }); return receipt;
+      const receipt = Object.freeze({}) as GmailMetadataRead; reads.set(receipt, { original, context: receiptContext, window, full }); return receipt;
     });
   })().then(receipt => { if (!receipt || typeof receipt !== 'object' || reads.get(receipt)?.original !== original) throw Error('gmail_metadata_unconfirmed'); return receipt; }).catch(() => { throw Error('gmail_metadata_unconfirmed'); });
   requests.set(original, pending); return pending;
@@ -133,3 +141,68 @@ export function consumeGmailMetadata<T>(receipt: GmailMetadataRead | undefined, 
 export function validateGmailMetadataRead(receipt: GmailMetadataRead | undefined): void {
   const own = receipt && reads.get(receipt); if (!own) throw Error('gmail_metadata_unconfirmed'); own.context.checkBeforeRead();
 }
+
+// The distinct native text child must reference this exact metadata purpose and
+// its private live receipt. No callback/DTO/time can select a different source.
+declare const gmailTextRead:unique symbol;
+export type GmailTextRead={readonly [gmailTextRead]:true};
+export type GmailTextSource=Readonly<{source:GmailMetadataSource;text:string;bytes:number}>;
+export type GmailTextWindow=Readonly<{configured:boolean;read:number;skipped:number;messages:readonly GmailTextSource[];
+  coverage:'at-most-ten-root-inline-text-plain-only';content:'utf8-or-ascii-no-html-multipart-or-attachments';acceptance:'data-only-not-draft-send-consent-or-operative-freshness'}>;
+const textRequests=new WeakMap<object,Promise<GmailTextRead>>(),textReads=new WeakMap<object,{original:object;context:Context;window:GmailTextWindow;promise?:Promise<unknown>}>();
+function plain(value:unknown,source:GmailMetadataSource,remaining:number):GmailTextSource|null{
+  if(!object(value)||Object.keys(value).some(k=>!['id','threadId','labelIds','payload'].includes(k))||!object(value.payload))throw Error('gmail_text_unconfirmed');
+  const p=value.payload;if(Object.keys(p).some(k=>!['mimeType','filename','headers','body','parts'].includes(k))||!text(p.mimeType,128)
+    ||p.filename!==undefined&&!text(p.filename,512)||!Array.isArray(p.headers)||p.headers.length>128)throw Error('gmail_text_unconfirmed');
+  const headers: {name:string;value:string}[]=[],names=new Set<string>();
+  for(const h of p.headers){
+    if(!object(h)||Object.keys(h).some(k=>!['name','value'].includes(k))||!text(h.name,64)||!h.name.length||!text(h.value,8192))throw Error('gmail_text_unconfirmed');
+    const name=h.name.toLowerCase();
+    if(names.has(name)&&(selected.some(n=>n.toLowerCase()===name)||['content-type','content-disposition'].includes(name)))throw Error('gmail_text_unconfirmed');
+    names.add(name);headers.push({name:h.name,value:h.value});
+  }
+  const selectedHeaders=headers.filter(h=>selected.some(n=>n.toLowerCase()===h.name.toLowerCase()));
+  const current=metadata({...value,payload:{headers:selectedHeaders}},source);
+  const signature=(rows:readonly Readonly<{name:string;value:string}>[])=>JSON.stringify(rows.map(h=>[h.name.toLowerCase(),h.value]).sort((a,b)=>a[0].localeCompare(b[0])));
+  if(signature(current.headers)!==signature(source.headers)||JSON.stringify([...current.labels].sort())!==JSON.stringify([...source.labels].sort()))throw Error('gmail_text_unconfirmed');
+  if(p.parts!==undefined&&(!Array.isArray(p.parts)||p.parts.length>32||p.parts.some(part=>!object(part)||Object.keys(part).some(k=>!['mimeType','filename','body'].includes(k))||part.body!==undefined&&(!object(part.body)||Object.keys(part.body).some(k=>!['size','attachmentId'].includes(k))))))throw Error('gmail_text_unconfirmed');
+  if(!object(p.body)||Object.keys(p.body).some(k=>!['size','data','attachmentId'].includes(k)))throw Error('gmail_text_unconfirmed');
+  if(p.mimeType.toLowerCase()!=='text/plain'||p.filename||p.body.attachmentId!==undefined||Array.isArray(p.parts)&&p.parts.length)return null;
+  const contentType=headers.find(h=>h.name.toLowerCase()==='content-type')?.value,disposition=headers.find(h=>h.name.toLowerCase()==='content-disposition')?.value;
+  if(disposition!==undefined&&!/^inline$/i.test(disposition))return null;
+  const charset=contentType?.match(/^text\/plain(?:\s*;\s*charset\s*=\s*(?:"(utf-8|us-ascii)"|(utf-8|us-ascii)))?\s*$/i);
+  if(contentType!==undefined&&!charset)return null;
+  const size=p.body.size,data=p.body.data??(size===0?'':undefined);
+  if(!Number.isSafeInteger(size)||(size as number)<0||(size as number)>16384||(size as number)>remaining||typeof data!=='string'||data.length>21848||!/^[-_A-Za-z0-9]*={0,2}$/.test(data))throw Error('gmail_text_unconfirmed');
+  const unpadded=data.replace(/=+$/,''),padding=data.length-unpadded.length;
+  if(unpadded.length%4===1||padding&&padding!==(4-unpadded.length%4)%4)throw Error('gmail_text_unconfirmed');
+  const bytes=Buffer.from(data,'base64url');if(bytes.length!==size||bytes.toString('base64url')!==unpadded)throw Error('gmail_text_unconfirmed');
+  const utf8=(charset?.[1]??charset?.[2])?.toLowerCase()==='utf-8';if(!utf8&&bytes.some((b:number)=>b>127))throw Error('gmail_text_unconfirmed');
+  const valueText=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  if(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(valueText))throw Error('gmail_text_unconfirmed');
+  return Object.freeze({source,text:valueText,bytes:bytes.length});
+}
+export function readGmailText(original?:NativeAdminGmailText):Promise<GmailTextRead>{
+  if(!original||typeof original!=='object')return Promise.reject(Error('gmail_text_unconfirmed'));
+  const prior=textRequests.get(original);if(prior)return prior;
+  const pending=(async()=>{
+    const {runAdminGmailText}=await import('@/lib/admin-social-messages');
+    return runAdminGmailText(original,async native=>{
+      const own=reads.get(native.metadataRead);if(!own||own.original!==native.metadataPurpose)throw Error('gmail_text_unconfirmed');
+      const check=()=>{native.checkBeforeRead();own.context.checkBeforeRead();checkConfiguration();};check();
+      const configured=raw.GMAIL_TEXT_READ_ENABLED==='true'&&own.window.configured;
+      const messages:GmailTextSource[]=[];let skipped=0,bytes=0;
+      if(configured){if(!own.full)throw Error('gmail_text_unconfirmed');
+        for(const source of own.window.messages){check();const value=await own.full(source);check();const row=plain(value,source,65536-bytes);check();if(row){bytes+=row.bytes;messages.push(row);}else skipped++;}
+      }
+      check();const window:GmailTextWindow=Object.freeze({configured,read:messages.length,skipped,messages:Object.freeze(messages),coverage:'at-most-ten-root-inline-text-plain-only',content:'utf8-or-ascii-no-html-multipart-or-attachments',acceptance:'data-only-not-draft-send-consent-or-operative-freshness'});
+      const receipt=Object.freeze({}) as GmailTextRead;textReads.set(receipt,{original,context:Object.freeze({...own.context,checkBeforeRead:check}),window});return receipt;
+    });
+  })().then(receipt=>{if(!receipt||typeof receipt!=='object'||textReads.get(receipt)?.original!==original)throw Error('gmail_text_unconfirmed');return receipt;}).catch(()=>{throw Error('gmail_text_unconfirmed');});
+  textRequests.set(original,pending);return pending;
+}
+export function consumeGmailText<T>(receipt:GmailTextRead|undefined,run:(window:GmailTextWindow)=>Promise<T>):Promise<T>{
+  const own=receipt&&textReads.get(receipt);if(!own)return Promise.reject(Error('gmail_text_unconfirmed'));
+  return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeRead();const value=await run(own.window);own.context.checkBeforeRead();return value;})) as Promise<T>;
+}
+export function validateGmailTextRead(receipt:GmailTextRead|undefined):void{const own=receipt&&textReads.get(receipt);if(!own)throw Error('gmail_text_unconfirmed');own.context.checkBeforeRead();}

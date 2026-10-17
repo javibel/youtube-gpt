@@ -1,6 +1,6 @@
 export type SocialMessagesOwner = Readonly<{ id: string; email: string; authSessionRef: string; expiresAt: number }>;
 export type SocialMessagesPartialData = Readonly<{ youtube: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only'; pages: number; scanned: number; hasMore: boolean }>;
-  gmail: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only-metadata'; scanned: number; hasMore: boolean }> }>;
+  gmail: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only-metadata'; scanned: number; hasMore: boolean; text?:Readonly<{read:number;skipped:number}> }> }>;
 declare const messagesPartialView: unique symbol;
 export type SocialMessagesPartialView = { readonly [messagesPartialView]: true };
 const views = new WeakMap<object, { own: object; data: SocialMessagesPartialData }>();
@@ -28,6 +28,14 @@ function partial(value: Record<string, unknown>): SocialMessagesPartialData {
       || !integer(v.scanned) || v.scanned > 10 || typeof v.hasMore !== 'boolean' || v.coverage !== 'at-most-ten-unread-inbox-messages-one-list-page'
       || v.content !== 'selected-headers-only-no-body-or-attachments' || v.acceptance !== 'read-only-not-draft-send-consent-or-operative-freshness') throw Error('Unconfirmed social messages');
     g = Object.freeze({ status: 'read-only-metadata', scanned: v.scanned, hasMore: v.hasMore });
+  }
+  if(Object.hasOwn(value,'gmailText')){
+    const t=value.gmailText;
+    if(g.status!=='read-only-metadata'||!object(t,['configured','read','skipped','coverage','content','acceptance'])||t.configured!==true
+      ||!integer(t.read)||!integer(t.skipped)||t.read+t.skipped!==g.scanned||t.read+t.skipped>10
+      ||t.coverage!=='at-most-ten-root-inline-text-plain-only'||t.content!=='utf8-or-ascii-no-html-multipart-or-attachments'
+      ||t.acceptance!=='data-only-not-draft-send-consent-or-operative-freshness')throw Error('Unconfirmed social messages');
+    g=Object.freeze({...g,text:Object.freeze({read:t.read,skipped:t.skipped})});
   }
   if (y.status === 'unavailable' && g.status === 'unavailable') throw Error('Unconfirmed social messages');
   return Object.freeze({ youtube: y, gmail: g });
@@ -86,7 +94,7 @@ export function beginAdminSocialMessages(owner: SocialMessagesOwner, current: ()
         }
       } else { raw = await wait(response.text.bind(response)); if (new TextEncoder().encode(raw).byteLength > 8192) throw error(); }
       check(); const value: unknown = JSON.parse(raw); check();
-      if (!object(value, ['ok','error','youtube','gmail','messagesRead']) || value.ok !== false || value.error !== 'social_messages_unavailable') throw error();
+      if (!object(value, ['ok','error','youtube','gmail','messagesRead',...(value&&typeof value==='object'&&Object.hasOwn(value,'gmailText')?['gmailText']:[])]) || value.ok !== false || value.error !== 'social_messages_unavailable') throw error();
       const binding = value.messagesRead;
       if (!object(binding, ['commandRef','userId','email','sessionRef','asOf','expiresAt']) || binding.commandRef !== command || binding.userId !== captured.id
         || binding.email !== captured.email || binding.sessionRef !== captured.authSessionRef || !integer(binding.asOf) || binding.asOf < at || binding.asOf > Date.now()
