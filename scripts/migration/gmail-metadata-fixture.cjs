@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const scope='https://www.googleapis.com/auth/gmail.readonly',mailbox='closed-mailbox@example.invalid';
 const env={GMAIL_READ_ENABLED:'true',GMAIL_READ_MAILBOX:mailbox,GMAIL_CLIENT_ID:'closed-gmail-client',GMAIL_CLIENT_SECRET:'closed-gmail-secret',GMAIL_REFRESH_TOKEN:'closed-gmail-refresh'};
 const item=(n=1)=>({id:n.toString(16),threadId:(100+n).toString(16)});
-function transport(o={}){const http=[],bodies=[];const fetch=(url,settings,stage)=>{
+function transport(o={}){const mailbox=o.mailbox??env.GMAIL_READ_MAILBOX,ownEnv={...env,GMAIL_READ_MAILBOX:mailbox};const http=[],bodies=[];const fetch=(url,settings,stage)=>{
  const u=new URL(url),kind=u.origin==='https://oauth2.googleapis.com'&&u.pathname==='/token'?'token':u.origin==='https://gmail.googleapis.com'&&u.pathname==='/gmail/v1/users/me/profile'?'profile':u.origin==='https://gmail.googleapis.com'&&u.pathname==='/gmail/v1/users/me/messages'?'list':u.origin==='https://gmail.googleapis.com'&&/^\/gmail\/v1\/users\/me\/messages\/[a-f0-9]+$/.test(u.pathname)?'metadata':null;
  assert(kind,'No other endpoint,send,draft,label,attachment or host is allowed');http.push({url,method:settings.method,kind});assert.equal(settings.cache,'no-store');assert.equal(settings.redirect,'error');assert.equal(settings.credentials,'omit');assert(settings.signal instanceof AbortSignal);
  if(kind==='token'){assert.equal(settings.method,'POST');const body=new URLSearchParams(settings.body);assert.equal(body.get('client_id'),env.GMAIL_CLIENT_ID);assert.equal(body.get('client_secret'),env.GMAIL_CLIENT_SECRET);assert.equal(body.get('refresh_token'),env.GMAIL_REFRESH_TOKEN);assert.equal(body.get('grant_type'),'refresh_token');assert.deepEqual([...body.keys()].sort(),['client_id','client_secret','grant_type','refresh_token']);assert.equal(u.search,'');}
@@ -15,5 +15,5 @@ function transport(o={}){const http=[],bodies=[];const fetch=(url,settings,stage
  let canceled=false;const stream=new ReadableStream({start(c){stage('gmail-'+kind+'-body',async()=>{bodies.push(kind);if(canceled)return;const bytes=o.bytes&&o.badKind===kind?o.bytes:new TextEncoder().encode(o.raw&&o.badKind===kind?o.raw:JSON.stringify(value));c.enqueue(bytes);c.close();}).catch(e=>{if(!canceled)c.error(e);});},cancel(){canceled=true;}});
  const response=new Response(stream,{status:o.badKind===kind?o.status??200:200,headers:{'content-type':o.badKind===kind?o.contentType??'application/json':'application/json'}});
  if(o.badKind===kind&&o.redirected)Object.defineProperty(response,'redirected',{value:true});if(o.badKind===kind&&o.wrongUrl)Object.defineProperty(response,'url',{value:'https://foreign.invalid'});return response;});
- };return{env:{...env},http,bodies,fetch};}
+ };return{env:ownEnv,http,bodies,fetch};}
 module.exports={transport,env,mailbox,scope,item};
