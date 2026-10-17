@@ -1540,3 +1540,17 @@ model YoutubeReplyAttempt {
  @@unique([channelId,commentId])
  @@map("youtube_reply_attempts")
 }
+
+// Permanent per-user/day denial. No runtime DDL,resume,TTL or reset API.
+model TrendGenerationAttempt {
+ id String @id
+ userId String
+ date String
+ source Json
+ state String @default("pending")
+ alerts Json?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ @@unique([userId,date])
+ @@map("trend_generation_attempts")
+}
