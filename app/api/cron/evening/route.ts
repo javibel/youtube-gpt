@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead) => {
+  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead, _morningSocial, _verify, _reengagement, issueYoutubeComments) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const [instagram, youtubeResult] =
       await Promise.allSettled([
         step(() => generateSocialPost('instagram', 'evening', instagramOriginal)),
-        step(() => runYoutubeAgent()),
+        step(() => runYoutubeAgent(issueYoutubeComments())),
       ]);
 
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       ? youtubeResult.value
       : { processed: 0, replied: 0, errors: [`YouTube agent failed: ${youtubeResult.reason}`] };
     errors.push(...youtube.errors);
-    results.youtube = { processed: youtube.processed, replied: youtube.replied };
+    results.youtube = { processed: youtube.processed, replied: youtube.replied, ...('coverage' in youtube?{coverage:youtube.coverage}:{}) };
 
     // The same source/read/native lifetime owns image,day,remote effect and
     // SQL completion. Only its private final consumer may build this response.
