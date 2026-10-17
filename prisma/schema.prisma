@@ -787,6 +787,8 @@ model SocialMessage {
   replyContent String?
   repliedAt    DateTime?
 
+  youtubeReplyAttempt YoutubeReplyAttempt?
+
   @@map("social_messages")
 }
 model NarrativeBible {
@@ -1520,4 +1522,21 @@ model ExtensionBestTimeUseAttempt {
  eventAt DateTime?
  @@index([userId], map: "extension_best_time_use_attempts_owner")
  @@map("extension_best_time_use_attempts")
+}
+// A permanent denial fence for one original channel/comment reply producer.
+// No cascade,TTL,reset or row may recreate its private invocation.
+model YoutubeReplyAttempt {
+ id String @id
+ channelId String
+ commentId String
+ source Json
+ state String @default("admitted")
+ messageId String? @unique
+ replyId String? @unique
+ replyText String?
+ createdAt DateTime @default(now())
+ completedAt DateTime?
+ message SocialMessage? @relation(fields:[messageId],references:[id],onDelete:Restrict)
+ @@unique([channelId,commentId])
+ @@map("youtube_reply_attempts")
 }

@@ -1,0 +1,27 @@
+'use strict';
+const assert=require('node:assert/strict'),{fixture:readFixture,comment,page,channel,reached,drain}=require('./youtube-comment-fixture.cjs'),{taskFixture}=require('./task-fixture.cjs'),{load}=require('./route-harness.cjs');
+function fixture(o={}){
+ const at=o.at??Date.now(),rows=o.rows??[comment(o.id??'reply-closed',at)],store=o.store??{attempts:new Map(),messages:new Map()},api=new Map(rows.map(r=>[r.id,structuredClone(r)]));let b;
+ const legacy=id=>[...store.messages.values()].some(r=>r.platform==='youtube'&&(r.externalId===id||r.fromUser.includes(id)));
+ const matches=(a,args)=>a&&a.id===args[0]&&a.channelId===args[1]&&a.commentId===args[2]&&JSON.stringify(a.source)===JSON.stringify(JSON.parse(args[3]))&&a.state==='admitted';
+ function emulate(sql,args){const tag=/youtube-reply:([a-z]+)/.exec(sql)?.[1],[id,channelId,commentId,source]=args,key=channelId+'/'+commentId;
+  if(tag==='admit'){if(store.attempts.has(key)||legacy(commentId))return[];const a={id,channelId,commentId,source:JSON.parse(source),state:'admitted'};store.attempts.set(key,a);return o.badAdmission??[{id,channelId,commentId,state:'admitted',sourceMatches:true}];}
+  if(tag==='negative')return[{eligible:matches(store.attempts.get(key),args)&&!legacy(commentId)}];
+  if(tag==='complete'){const a=store.attempts.get(key);if(!matches(a,args)||legacy(commentId))return[];const[, , , ,messageId,fromUser,content,replyContent,replyId]=args;store.messages.set(messageId,{id:messageId,platform:'youtube',fromUser,content,replyContent,externalId:commentId,replied:true});Object.assign(a,{state:'completed',messageId,replyId,replyText:replyContent});return o.badCompletion??[{id,messageId,replyId}];}
+  throw Error('Unexpected reply SQL');
+ }
+ const stage=(name,run)=>b.stage(name,async()=>{const v=await run();if(o.lost===name)throw Error('Closed lost ACK');return v;});
+ function query(run){return(sql,...args)=>{const tag=/youtube-reply:([a-z]+)/.exec(sql)?.[1];assert(tag);return stage(tag==='admit'||tag==='complete'?tag+'-sql':tag,()=>run(sql,args));};}
+ const prisma={$queryRawUnsafe:query(o.sql??emulate),$transaction:async work=>{let kind;const execute=tx=>work({$queryRawUnsafe:(s,...args)=>{kind=/youtube-reply:([a-z]+)/.exec(s)?.[1];return query((sql,a)=>tx.$queryRawUnsafe(sql,...a))(s,...args);}}),value=o.transaction?await o.transaction(execute):await execute({$queryRawUnsafe:(s,...a)=>Promise.resolve(emulate(s,a))});return stage(kind,()=>value);}};
+ const common=taskFixture({serviceId:'brand-agent',taskType:'brand.youtube-reply',controlUnavailable:o.controlUnavailable,respond:(p,opts)=>stage('model',async()=>{assert.equal(p.max_tokens,150);assert(p.messages[0].content.includes(JSON.stringify({author:rows[0].snippet.topLevelComment.snippet.authorDisplayName,comment:rows[0].snippet.topLevelComment.snippet.textDisplay}))||rows.length>1);return o.modelResult??{content:[{type:'text',text:'Closed helpful reply.'}],usage:{input_tokens:10,output_tokens:5},stop_reason:'end_turn'};})});
+ const runtime={getMessagesTask:identity=>stage('factory',()=>common.getMessagesTask(identity))};
+ const fetch=(url,settings,base)=>{b??=base;const u=new URL(url);let name,value;
+  if(u.pathname==='/youtube/v3/commentThreads'){assert.equal(u.origin,'https://www.googleapis.com');assert.equal(settings.method,'GET');assert.equal(u.searchParams.get('key'),'closed-read-key');assert.equal(u.searchParams.get('textFormat'),'plainText');const id=u.searchParams.get('id');name=id?'source':'read';value=id?page(api.has(id)?[api.get(id)]:[]):page(rows);}
+  else if(url==='https://oauth2.googleapis.com/token'){name='oauth';assert.equal(settings.method,'POST');const p=new URLSearchParams(settings.body);assert.equal(p.get('client_secret'),'closed-secret');assert.equal(p.get('grant_type'),'refresh_token');value=o.token??{access_token:'closed-access',token_type:'Bearer',expires_in:3600,scope:'https://www.googleapis.com/auth/youtube.force-ssl'};}
+  else if(url==='https://www.googleapis.com/youtube/v3/channels?part=id&mine=true'){name='identity';assert.equal(settings.method,'GET');assert.equal(settings.headers.Authorization,'Bearer closed-access');value=o.identity??{kind:'youtube#channelListResponse',items:[{kind:'youtube#channel',id:channel}]};}
+  else{assert.equal(url,'https://www.googleapis.com/youtube/v3/comments?part=snippet');name='post';assert.equal(settings.method,'POST');assert.equal(settings.headers.Authorization,'Bearer closed-access');const body=JSON.parse(settings.body);assert.deepEqual(Object.keys(body),['snippet']);value=o.post??{kind:'youtube#comment',id:'reply-'+body.snippet.parentId,snippet:{...body.snippet,channelId:channel,authorChannelId:{value:channel}}};}
+  assert.equal(settings.redirect,'error');assert.equal(settings.cache,'no-store');b.http.push({name,url,settings});return stage(name+'-http',async()=>{let cancelled=false;return new Response(new ReadableStream({start(c){stage(name+'-body',async()=>{if(!cancelled){c.enqueue(new TextEncoder().encode(o.rawStage===name?o.raw:JSON.stringify(value)));c.close();}}).catch(e=>{if(!cancelled)c.error(e);});},cancel(){cancelled=true;b.cancelled++;}}),{status:o.statusStage===name?403:200,headers:{'content-type':'application/json'}});});
+ };
+ b=readFixture({...o,at,reply:true,fetch,prisma,runtime});Object.assign(b,{store,api,common,rows,reload:()=>load('lib/agent/youtube-reply-original.ts',b.producerMocks,b.globals)});return b;
+}
+module.exports={fixture,comment,page,channel,reached,drain};

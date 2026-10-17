@@ -3,13 +3,13 @@
  * API shape: https://developers.google.com/youtube/v3/docs/commentThreads/list
  * https://developers.google.com/youtube/v3/docs/commentThreads
  */
-import {runCronYoutubeComments,type NativeCronYoutubeComments} from '@/lib/cron-dispatch-original';
+import {runCronYoutubeComments,runCronYoutubeReplies,type NativeCronYoutubeReplies,type NativeCronYoutubeComments} from '@/lib/cron-dispatch-original';
 declare const youtubeCommentRead:unique symbol;
 export type YoutubeCommentRead={readonly[youtubeCommentRead]:true};
 export type YoutubeCommentSource=Readonly<{threadId:string;commentId:string;channelId:string;videoId:string|null;authorChannelId:string|null;authorName:string;text:string;publishedAt:string;updatedAt:string;canReply:boolean}>;
 export type YoutubeCommentWindow=Readonly<{configured:boolean;pages:number;scanned:number;eligible:number;hasMore:boolean;comments:readonly YoutubeCommentSource[];coverage:'at-most-three-pages-within-original-budget';acceptance:'read-only-not-reply-consent-or-operative-freshness'}>;
 type Context=Readonly<{at:number;signal:AbortSignal;checkBeforeRead:()=>void;remainingBeforeRead:()=>number}>;
-const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;promise?:Promise<unknown>}>();
+const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;replyUsed?:boolean;promise?:Promise<unknown>}>();
 const KEY=process.env.YOUTUBE_API_KEY,CHANNEL=process.env.YOUTUBE_CHANNEL_ID,key=KEY?.trim(),channel=CHANNEL?.trim(),nativeFetch=globalThis.fetch;
 const endpoint='https://www.googleapis.com/youtube/v3/commentThreads';
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -48,6 +48,14 @@ export function readYoutubeComments(original?:NativeCronYoutubeComments):Promise
  }).then(value=>{if(!value||typeof value!=='object'||reads.get(value)?.original!==original)throw Error('youtube_comments_unconfirmed');return value;}).catch(()=>{throw Error('youtube_comments_unconfirmed');});requests.set(original,pending);return pending;
 }
 export function consumeYoutubeComments<T>(receipt:YoutubeCommentRead|undefined,run:(window:YoutubeCommentWindow)=>Promise<T>):Promise<T>{
- const own=receipt&&reads.get(receipt);if(!own)return Promise.reject(Error('youtube_comments_unconfirmed'));
+ const own=receipt&&reads.get(receipt);if(!own||own.replyUsed)return Promise.reject(Error('youtube_comments_unconfirmed'));
  return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeRead();const result=await run(own.window);own.context.checkBeforeRead();return result;}))as Promise<T>;
+}
+
+export type YoutubeReplySourceContext=Readonly<{at:number;signal:AbortSignal;checkBeforeEffect:()=>void;remainingBeforeEffect:()=>number;validateSource:(row:YoutubeCommentSource)=>Promise<void>}>;
+export function runYoutubeReplySource<T>(receipt:YoutubeCommentRead|undefined,purpose:NativeCronYoutubeReplies|undefined,run:(window:YoutubeCommentWindow,context:YoutubeReplySourceContext)=>Promise<T>):Promise<T>{
+ const own=receipt&&reads.get(receipt);if(!own||own.promise||own.replyUsed)return Promise.reject(Error('youtube_reply_unconfirmed'));own.replyUsed=true;
+ return runCronYoutubeReplies(purpose,async native=>{if(native.readPurpose!==own.original)throw Error('youtube_reply_unconfirmed');const check=()=>{native.checkBeforeEffect();own.context.checkBeforeRead();};check();
+ const validateSource=async(row:YoutubeCommentSource)=>{check();if(!own.window.comments.includes(row)||!row.canReply)throw Error('youtube_reply_unconfirmed');const url=new URL(endpoint);url.searchParams.set('part','snippet');url.searchParams.set('id',row.threadId);url.searchParams.set('textFormat','plainText');url.searchParams.set('key',key!);const value=parse(await page(url.toString(),own.context),own.context);check();if(value.next||value.comments.length!==1||JSON.stringify(value.comments[0])!==JSON.stringify(row))throw Error('youtube_reply_unconfirmed');};
+ const result=await run(own.window,Object.freeze({at:own.context.at,signal:own.context.signal,checkBeforeEffect:check,remainingBeforeEffect:own.context.remainingBeforeRead,validateSource}));check();return result;});
 }

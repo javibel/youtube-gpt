@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead, _morningSocial, _verify, _reengagement, issueYoutubeComments) => {
+  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead, _morningSocial, _verify, _reengagement, issueYoutubeComments, issueYoutubeReplies) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -27,11 +27,11 @@ export async function GET(request: Request) {
 
     // 1. Generate Instagram content + run agents in parallel (evening = Instagram only)
     // Gmail agent disabled here — YCML (local PM2 agent) handles inbox every 30min
-    const instagramOriginal=issueSocialPost('instagram');
+    const instagramOriginal=issueSocialPost('instagram'),youtubeReadOriginal=issueYoutubeComments();
     const [instagram, youtubeResult] =
       await Promise.allSettled([
         step(() => generateSocialPost('instagram', 'evening', instagramOriginal)),
-        step(() => runYoutubeAgent(issueYoutubeComments())),
+        step(() => runYoutubeAgent(youtubeReadOriginal,issueYoutubeReplies(youtubeReadOriginal))),
       ]);
 
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       ? youtubeResult.value
       : { processed: 0, replied: 0, errors: [`YouTube agent failed: ${youtubeResult.reason}`] };
     errors.push(...youtube.errors);
-    results.youtube = { processed: youtube.processed, replied: youtube.replied, ...('coverage' in youtube?{coverage:youtube.coverage}:{}) };
+    results.youtube = { processed: youtube.processed, replied: youtube.replied, ...('coverage' in youtube?{coverage:youtube.coverage}:{}),...('replyCoverage' in youtube?{replyCoverage:youtube.replyCoverage}:{}) };
 
     // The same source/read/native lifetime owns image,day,remote effect and
     // SQL completion. Only its private final consumer may build this response.

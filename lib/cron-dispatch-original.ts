@@ -20,6 +20,8 @@ declare const nativeCronReengagement:unique symbol;
 export type NativeCronReengagement={readonly[nativeCronReengagement]:true};
 declare const nativeCronYoutubeComments:unique symbol;
 export type NativeCronYoutubeComments={readonly[nativeCronYoutubeComments]:true};
+declare const nativeCronYoutubeReplies:unique symbol;
+export type NativeCronYoutubeReplies={readonly[nativeCronYoutubeReplies]:true};
 type MorningSocialContext=Readonly<{facebook:NativeCronSocialPost;instagram:NativeCronSocialPost;facebookRead:NativeCronBrandImageRead;instagramRead:NativeCronBrandImageRead;checkBeforeDispatch:()=>void}>;
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
@@ -30,7 +32,8 @@ const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promis
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
 const socialPosts = new WeakMap<object, { parent: Original; date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
 const imageReads = new WeakMap<object, { parent: Original; source?:NativeCronSocialPost; date: string; check: () => void; promise?: Promise<unknown> }>();
-const youtubeComments=new WeakMap<object,{at:number;signal:AbortSignal;check:()=>void;remaining:()=>number;promise?:Promise<unknown>}>();
+const youtubeReplies=new WeakMap<object,{readPurpose:NativeCronYoutubeComments;check:()=>void;promise?:Promise<unknown>}>();
+const youtubeComments=new WeakMap<object,{parent:Original;at:number;signal:AbortSignal;check:()=>void;remaining:()=>number;promise?:Promise<unknown>}>();
 const reengagements=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const verificationReminders=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const morningSocials=new WeakMap<object,{context:MorningSocialContext;promise?:Promise<unknown>}>();
@@ -64,7 +67,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
     issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost,
     issueBrandImageRead: () => NativeCronBrandImageRead,
-    issueMorningSocial: () => NativeCronMorningSocial, issueVerificationReminders:()=>NativeCronVerificationReminders,issueReengagement:()=>NativeCronReengagement,issueYoutubeComments:()=>NativeCronYoutubeComments) => Promise<T>): Promise<T> {
+    issueMorningSocial: () => NativeCronMorningSocial, issueVerificationReminders:()=>NativeCronVerificationReminders,issueReengagement:()=>NativeCronReengagement,issueYoutubeComments:()=>NativeCronYoutubeComments,issueYoutubeReplies:(read:NativeCronYoutubeComments)=>NativeCronYoutubeReplies) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -164,8 +167,10 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
   let reengagementIssued=false;
   const issueReengagement=():NativeCronReengagement=>{check();if(own.slot!=='morning'||reengagementIssued)throw Error('reengagement_unconfirmed');reengagementIssued=true;const cap=Object.freeze({})as NativeCronReengagement,date=new Date(own.at).toISOString().slice(0,10);reengagements.set(cap,{at:own.at,check:()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('reengagement_unconfirmed');}});return cap;};
   let youtubeCommentsIssued=false;
-  const issueYoutubeComments=():NativeCronYoutubeComments=>{check();if(own.slot!=='evening'||youtubeCommentsIssued)throw Error('youtube_comments_unconfirmed');youtubeCommentsIssued=true;const cap=Object.freeze({})as NativeCronYoutubeComments,date=new Date(own.at).toISOString().slice(0,10),live=()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('youtube_comments_unconfirmed');};youtubeComments.set(cap,{at:own.at,signal:own.request.signal,check:live,remaining:()=>{live();return Math.min(own.until-Date.now(),own.deadline-performance.now());}});return cap;};
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial,issueVerificationReminders,issueReengagement,issueYoutubeComments); check(); return result; }
+  const issueYoutubeComments=():NativeCronYoutubeComments=>{check();if(own.slot!=='evening'||youtubeCommentsIssued)throw Error('youtube_comments_unconfirmed');youtubeCommentsIssued=true;const cap=Object.freeze({})as NativeCronYoutubeComments,date=new Date(own.at).toISOString().slice(0,10),live=()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('youtube_comments_unconfirmed');};youtubeComments.set(cap,{parent:own,at:own.at,signal:own.request.signal,check:live,remaining:()=>{live();return Math.min(own.until-Date.now(),own.deadline-performance.now());}});return cap;};
+  let youtubeRepliesIssued=false;
+  const issueYoutubeReplies=(readPurpose:NativeCronYoutubeComments):NativeCronYoutubeReplies=>{check();const read=readPurpose&&youtubeComments.get(readPurpose);if(own.slot!=='evening'||youtubeRepliesIssued||!read||read.parent!==own)throw Error('youtube_reply_unconfirmed');read.check();youtubeRepliesIssued=true;const cap=Object.freeze({})as NativeCronYoutubeReplies;youtubeReplies.set(cap,{readPurpose,check:read.check});return cap;};
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial,issueVerificationReminders,issueReengagement,issueYoutubeComments,issueYoutubeReplies); check(); return result; }
   finally { retired = true; }
 }
 
@@ -250,4 +255,9 @@ export function runCronReengagement<T>(original:NativeCronReengagement|undefined
 export function runCronYoutubeComments<T>(original:NativeCronYoutubeComments|undefined,run:(context:Readonly<{at:number;signal:AbortSignal;checkBeforeRead:()=>void;remainingBeforeRead:()=>number}>)=>Promise<T>):Promise<T>{
  const own=original&&youtubeComments.get(original);if(!own)return Promise.reject(Error('youtube_comments_unconfirmed'));
  return(own.promise??=Promise.resolve().then(async()=>{own.check();const result=await run(Object.freeze({at:own.at,signal:own.signal,checkBeforeRead:own.check,remainingBeforeRead:own.remaining}));own.check();return result;}))as Promise<T>;
+}
+
+export function runCronYoutubeReplies<T>(original:NativeCronYoutubeReplies|undefined,run:(context:Readonly<{readPurpose:NativeCronYoutubeComments;checkBeforeEffect:()=>void}>)=>Promise<T>):Promise<T>{
+ const own=original&&youtubeReplies.get(original);if(!own)return Promise.reject(Error('youtube_reply_unconfirmed'));
+ return(own.promise??=Promise.resolve().then(async()=>{own.check();const result=await run(Object.freeze({readPurpose:own.readPurpose,checkBeforeEffect:own.check}));own.check();return result;}))as Promise<T>;
 }
