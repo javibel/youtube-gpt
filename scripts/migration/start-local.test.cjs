@@ -7,7 +7,7 @@ const {connectLocalFixture,cancellationFixture}=require('../../lib/migration/loc
  const task=plan({PATH:process.env.PATH,UNRELATED:'discard'});
  const prerender=JSON.parse(fs.readFileSync(path.join(task.cwd,'.next/prerender-manifest.json'),'utf8'));
  assert(!Object.hasOwn(prerender.routes,'/admin/ai-configuration'),'Admin configuration must resolve the incoming native session, not a prerendered build-time denial');
- for(const scenario of ['single','mixed','no-eligible'])assert.equal(plan({YTV_MIGRATION_MESSAGES_SCENARIO:scenario}).env.YTV_MIGRATION_MESSAGES_SCENARIO,scenario);
+ for(const scenario of ['single','mixed','no-eligible','manual-review'])assert.equal(plan({YTV_MIGRATION_MESSAGES_SCENARIO:scenario}).env.YTV_MIGRATION_MESSAGES_SCENARIO,scenario);
  assert.equal(task.env.YTV_MIGRATION_MESSAGES_SCENARIO,'single');for(const value of ['',null,'real','mixed,send',{},true])assert.throws(()=>plan({YTV_MIGRATION_MESSAGES_SCENARIO:value}),/ISOLATION_BLOCKED/);
  assert.equal(task.host,'127.0.0.1');assert.equal(task.port,4300);
  assert.equal(task.env.UNRELATED,undefined);assert.equal(task.env.YTV_MIGRATION_WEB_TEST,'1');
