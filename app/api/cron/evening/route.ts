@@ -67,7 +67,8 @@ export async function GET(request: Request) {
         await published.validateBeforeResponse();return response;
       }));
     } catch (error) {
-      const code=(error as {message?:unknown}|null)?.message==='daily_brand_image_unconfirmed'?'daily_brand_image_unconfirmed':'social_publish_unconfirmed';
+      const message=(error as {message?:unknown}|null)?.message;
+      const code=message==='daily_brand_image_unconfirmed'||message==='daily_brand_image_read_unconfirmed'?'daily_brand_image_unconfirmed':'social_publish_unconfirmed';
       return NextResponse.json({ok:false,error:code,results,errors},{status:503});
     }
 
