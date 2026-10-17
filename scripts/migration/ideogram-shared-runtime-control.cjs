@@ -22,7 +22,7 @@ module.exports=async({pool,prefix,test})=>{
    if(mode==='provider-uncertain')h.state.imageResponse=async()=>new Response('Closed unknown response',{status:503});
    if(mode==='blocked-budget')await client.query('UPDATE ytv_ai_test_v1.budgets SET blocked=true WHERE budget_id=$1',[budgetId]);
    if(mode==='native-producer'){
-    const bytes=await require('sharp')({create:{width:16,height:16,channels:3,background:'#aaddff'}}).png().toBuffer(),{imageFixture}=require('./cron-brand-image-fixture.cjs'),{drain}=require('./social-post-original-fixture.cjs'),b=imageFixture({binaryRuntime:{getMessagesTask:prepared.factory},nativeCodec:true,downloadBytes:bytes});
+    const bytes=await require('sharp')({create:{width:1024,height:1024,channels:3,background:'#aaddff'}}).png().toBuffer(),{imageFixture}=require('./cron-brand-image-fixture.cjs'),{drain}=require('./social-post-original-fixture.cjs'),b=imageFixture({binaryRuntime:{getMessagesTask:prepared.factory},nativeCodec:true,downloadBytes:bytes});
     try{await b.beginImage(image=>b.image.consumeCronBrandImage(image,async own=>{assert.equal(own.width,1024);assert.equal(own.height,1024);assert.equal(own.contentType,'image/jpeg');assert.equal(own.bytes[0],255);assert.equal(own.bytes[1],216);await own.validateBeforeDispatch();}));assert.equal(b.calls.filter(v=>v==='binary-download').length,1);assert.equal(b.calls.filter(v=>v==='binary-decode').length,1);assert.equal(b.blobCalls.length,0);}finally{await drain(b);}
    }else if(mode==='foreign-principal'){
     await assert.rejects(invoke({...request,serviceId:'other'}),e=>e.code==='permissions');const {serviceId:_service,...rest}=request;await assert.rejects(invoke({...rest,userId:'brand-agent'}),e=>e.code==='permissions');
@@ -30,7 +30,7 @@ module.exports=async({pool,prefix,test})=>{
     await assert.rejects(invoke(),e=>mode==='lost-settlement-ack'?e.code==='uncertain':true);
     if(mode==='provider-uncertain')await assert.rejects(invoke());
    }else{
-    const first=await invoke(),second=await invoke();assert.equal(first.content[0].text,second.content[0].text);assert.equal(first.execution.providerId,'ideogram');assert.equal(first.execution.configRevision,config.revision);
+    const first=await invoke(),second=await invoke();assert.deepEqual(JSON.parse(first.content[0].text),JSON.parse(second.content[0].text));assert.equal(first.execution.providerId,'ideogram');assert.equal(first.execution.configRevision,config.revision);
     assert.equal(first.accounting.state,['unknown-cost','usage-tariff'].includes(mode)?'uncertain':'settled');
    }
    const rows=(await client.query('SELECT r.run_id,r.task_type,r.revision,r.snapshot,r.status,r.usage,q.state,q.amount_micros,q.actual_micros FROM ytv_ai_test_v1.runs r JOIN ytv_ai_test_v1.reservations q USING(run_id) WHERE q.budget_id=$1',[budgetId])).rows,budget=(await client.query('SELECT reserved_micros,settled_micros,blocked FROM ytv_ai_test_v1.budgets WHERE budget_id=$1',[budgetId])).rows[0];
