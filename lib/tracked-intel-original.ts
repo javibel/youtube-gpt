@@ -32,12 +32,15 @@ export async function trackedIntelOriginal(request: Request): Promise<TrackedInt
   request.signal.addEventListener('abort', retire, { once: true });
   async function text(body: ReadableStream<Uint8Array> | null, limit: number) {
     if (!body) fail(); const reader = body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
-    let bytes = 0, result = '';
+    let bytes = 0, chunks = 0, result = '', done = false, cancellation: Promise<void> | undefined;
+    const cancel = () => { if (!done && !cancellation) cancellation = reader.cancel().catch(() => {}); };
+    signal.addEventListener('abort', cancel, { once: true });
     try { for (;;) {
-      const part = await step(() => reader.read()); if (part.done) break;
-      bytes += part.value.byteLength; if (bytes > limit) fail(limit === 4096 ? 'invalid_input' : 'tracked_intel_unconfirmed'); result += decoder.decode(part.value, { stream: true });
+      const part = await step(() => reader.read()); if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > limit) fail(limit === 4096 ? 'invalid_input' : 'tracked_intel_unconfirmed');
+      result += decoder.decode(part.value, { stream: true });
     } return result + decoder.decode(); }
-    finally { void reader.cancel().catch(() => {}); }
+    finally { signal.removeEventListener('abort', cancel); cancel(); if (cancellation) await cancellation; reader.releaseLock(); }
   }
   try {
     if (!origin || !cookie || !trackedIntelCommand(commandRef) || request.method !== 'POST' || contentType !== 'application/json'
@@ -100,10 +103,21 @@ export async function trackedIntelOriginal(request: Request): Promise<TrackedInt
     const requestedAfter = new Date(startedAt - 7 * 86400000).toISOString(), requestedBefore = new Date(startedAt).toISOString();
     const json = async (path: string, params: Record<string, string>) => {
       await stillNative(); const endpoint = new URL(path, 'https://www.googleapis.com'); endpoint.search = new URLSearchParams(params).toString();
-      const response = await step(() => nativeFetch(endpoint.href, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store', redirect: 'error', signal }));
-      if (response.status === 401) { void response.body?.cancel().catch(() => {}); fail('token_expired'); }
-      if (!response.ok || response.redirected || !/^application\/json(?:;|$)/i.test(response.headers.get('content-type') ?? '')) fail();
-      return trackedIntelObject(JSON.parse(await text(response.body, 262144)));
+      const response = await step(async () => {
+        const own = await nativeFetch(endpoint.href, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', redirect: 'error', signal });
+        // A late response belongs to this original only. Drain its body without
+        // reviving the caller, issuing follow-on reads or creating recovery.
+        try { check(); return own; } catch (error) { await own.body?.cancel().catch(() => {}); throw error; }
+      });
+      let reading = false;
+      try {
+        check();
+        if (response.status === 401) fail('token_expired');
+        if (response.status !== 200 || response.ok !== true || response.redirected || response.url && response.url !== endpoint.href
+          || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') fail();
+        reading = true;
+        return trackedIntelObject(JSON.parse(await text(response.body, 262144)));
+      } finally { if (!reading) await response.body?.cancel().catch(() => {}); }
     };
     const mine = await json('/youtube/v3/channels', { part: 'snippet', mine: 'true', maxResults: '50' });
     if (mine.kind !== 'youtube#channelListResponse' || !Array.isArray(mine.items) || mine.items.length > 50 || mine.nextPageToken) fail();
