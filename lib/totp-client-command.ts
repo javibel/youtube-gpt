@@ -33,6 +33,37 @@ export function retireTotpProgress(attempt: TotpAttempt) {
   if (original) original.allowUpdate = false;
 }
 
+// Bind only a body from the retained native precheck/CSRF/session chain. Body
+// cleanup and observer retirement are never authority to release an issued POST.
+async function totpBody(response: Response, stage: 'precheck' | 'csrf' | 'session'): Promise<unknown> {
+  const endpoint = stage === 'precheck' ? '/api/auth/verify-totp' : stage === 'csrf' ? '/api/auth/csrf' : '/api/auth/session';
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (!(stage === 'precheck' ? [200, 400, 429] : [200]).includes(response.status)
+      || response.ok !== (response.status === 200) || response.redirected
+      || response.url && response.url !== new URL(endpoint, window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native factor unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256
+        || (bytes += part.value.byteLength) > (stage === 'session' ? 65_536 : 4096)) throw Error('Native factor unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join only this body's native cleanup. Pending/rejected cancellation cannot
+    // prove cookie state, recover a lost owner or undo a dispatched mutation.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private body failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function beginTotp(owner: TotpOwner, context: object, code: string,
   active: () => boolean): TotpAttempt | undefined {
   if (totpBlocked() || !active() || !owner.id || !owner.email || typeof owner.authSessionRef !== 'string' || !owner.authSessionRef || !/^\d{6}$/.test(code)) return;
@@ -56,16 +87,16 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
       const response = await fetch('/api/auth/verify-totp', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, ...expectation }),
       });
-      const body: unknown = await response.json();
+      const body = await totpBody(response, 'precheck');
       if (!body || typeof body !== 'object' || Array.isArray(body)) return settle('unconfirmed');
-      if (response.status === 400 && 'error' in body && body.error === 'invalid_code') return settle('invalid');
-      if (response.status === 429 && 'error' in body && body.error === 'rate_limited') return settle('rate-limited');
+      if (response.status === 400 && Object.keys(body).length === 1 && 'error' in body && body.error === 'invalid_code') return settle('invalid');
+      if (response.status === 429 && Object.keys(body).length === 1 && 'error' in body && body.error === 'rate_limited') return settle('rate-limited');
       if (!response.ok || response.status !== 200 || Object.keys(body).length !== 1
         || !('verified' in body) || body.verified !== true) return settle('unconfirmed');
       // A delayed precheck must never start the native mutation after retirement.
       if (!original.allowUpdate || !active()) return settle('not-issued');
       const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-      const csrf: unknown = await csrfResponse.json();
+      const csrf = await totpBody(csrfResponse, 'csrf');
       if (csrfResponse.status !== 200 || csrfResponse.ok !== true || !csrf || typeof csrf !== 'object'
         || Array.isArray(csrf) || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf)
         || typeof csrf.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(csrf.csrfToken)) return settle('unconfirmed');
@@ -75,7 +106,7 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
         headers: { 'Content-Type': 'application/json',
           'X-YTV-Totp-Expectation': encodeURIComponent(JSON.stringify(expectation)) },
         body: JSON.stringify({ csrfToken: csrf.csrfToken, data: { totpCode: code, ...expectation } }) });
-      const result: unknown = await native.json();
+      const result = await totpBody(native, 'session');
       if (native.status !== 200 || native.ok !== true) return settle('unconfirmed');
       if (!result || typeof result !== 'object' || Array.isArray(result)
         || Object.keys(result).some(key => key !== 'user' && key !== 'expires')
