@@ -30,6 +30,35 @@ function nativeSession(value: unknown): Session | null | undefined {
     || ['name', 'image'].some(key => key in principal && principal[key] !== null && typeof principal[key] !== 'string')) return;
   Object.freeze(principal); return Object.freeze(body) as unknown as Session;
 }
+// This body belongs to the one admitted cookie-writing GET. Intrinsic HTTP or
+// body failure retains uncertainty; observer retirement never cancels this read.
+async function nativeBody(response: Response): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL('/api/auth/session', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native session unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 65_536)
+        throw Error('Native session unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join only this body's native cleanup. Neither cancellation nor JSON can
+    // release the cookie permit, repeat a GET or recover a lost live owner.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private body failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function currentSessionReadOriginal() { return retained; }
 export function ownsSessionRead(attempt: SessionReadAttempt, context: object) { return originals.get(attempt)?.context === context; }
 export function beginSessionRead(context: object): SessionReadAttempt | undefined {
@@ -45,11 +74,9 @@ export function beginSessionRead(context: object): SessionReadAttempt | undefine
     try {
       if (markSessionCookieRead(permit)) {
         const response = await fetch('/api/auth/session', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-        const body: unknown = await response.json();
-        if (response.status === 200 && response.ok === true) {
-          const session = nativeSession(body);
-          if (session !== undefined) outcome = Object.freeze({ status: 'confirmed', session });
-        }
+        const body = await nativeBody(response);
+        const session = nativeSession(body);
+        if (session !== undefined) outcome = Object.freeze({ status: 'confirmed', session });
       }
     } catch { /* Retain uncertainty and the genuine read capability. */ }
     original.outcome = outcome; return outcome;
