@@ -14,6 +14,36 @@ const canRetry = (status?: Status) => !!status && ['invalid', 'exists', 'bot-den
 export function signupPending() { const own = retained && originals.get(retained); return !!own && !canRetry(own.status); }
 export function signupBlocked() { return sessionCookieWriterBusy() || signupPending(); }
 export function retireSignupProgress(attempt: SignupAttempt) { const own = originals.get(attempt); if (own) { own.dispatchAllowed = false; own.navigationAllowed = false; } }
+// Only the body of this exact native signup POST is consumed.
+// Intrinsic body failure never releases the live cookie permit. A UI timeout or
+// retirement neither cancels an issued request nor substitutes a new request.
+async function signupBody(response: Response): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (![201, 400, 403, 429].includes(response.status) || response.ok !== (response.status === 201) || response.redirected
+      || response.url && response.url !== new URL('/api/signup', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native signup response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native signup response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup; cancellation cannot undo an issued POST or
+    // prove authentication, freshness, shutdown, or another original's result.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function beginSignup(input: Omit<SignupInput, 'turnstileToken'>, challenge: SignupChallenge, context: object, active: () => boolean) {
   if (signupBlocked() || !active() || !input || typeof input.name !== 'string' || !input.name.trim() || input.name.trim().length > 100
     || typeof input.email !== 'string' || input.email.trim().length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())
@@ -38,11 +68,7 @@ export function beginSignup(input: Omit<SignupInput, 'turnstileToken'>, challeng
       if (!own.dispatchAllowed || !active()) return settle('not-issued');
       const response = await fetch('/api/signup', { method: 'POST', redirect: 'error', cache: 'no-store', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(captured) });
-      if (response.redirected || !response.headers.get('content-type')?.toLowerCase().includes('application/json') || !response.body) return settle('unconfirmed');
-      const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true }); let text = '', bytes = 0;
-      try { while (true) { const part = await reader.read(); if (part.done) break; bytes += part.value.byteLength; if (bytes > 4096) return settle('unconfirmed'); text += decoder.decode(part.value, { stream: true }); } text += decoder.decode(); }
-      finally { reader.releaseLock(); }
-      const body: unknown = JSON.parse(text);
+      const body = await signupBody(response);
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1) return settle('unconfirmed');
       if (response.status === 201 && response.ok === true && 'success' in body && body.success === true) return settle('created');
       if ('error' in body) {
