@@ -35,7 +35,8 @@ function harness({storage=new Map(),totpMode=false,logoutMode=null,coach=false,a
     const nativeProfileUpdate=profile&&url==='/api/user/profile'&&init.method==='PATCH';
     const nativeCheckout=profile&&url==='/api/stripe/checkout'&&init.method==='POST';
     const nativeCancellation=profile&&url==='/api/stripe/cancel'&&init.method==='POST';
-    if(!nativeTotp&&!nativeSignout&&!nativePassword&&!nativeProfileRead&&!nativeProfileUpdate&&!nativeCheckout&&!nativeCancellation)return original;
+    const nativeDowngrade=profile&&url==='/api/stripe/downgrade'&&init.method==='POST';
+    if(!nativeTotp&&!nativeSignout&&!nativePassword&&!nativeProfileRead&&!nativeProfileUpdate&&!nativeCheckout&&!nativeCancellation&&!nativeDowngrade)return original;
     return original.then(raw=>{
     if(raw instanceof Response)return raw;
     const response=new Response(new ReadableStream({async pull(c){try{c.enqueue(new TextEncoder().encode(JSON.stringify(await raw.json())));c.close();}catch(e){c.error(e);}}},{highWaterMark:0}),{status:raw.status??(raw.ok?200:503),headers:{'content-type':'application/json'}});
