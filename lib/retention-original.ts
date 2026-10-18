@@ -35,12 +35,15 @@ export async function retentionOriginal(request: Request): Promise<RetentionResu
   request.signal.addEventListener('abort', retire, { once: true });
   async function text(body: ReadableStream<Uint8Array> | null, limit: number) {
     if (!body) fail(); const reader = body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
-    let bytes = 0, result = '';
+    let bytes = 0, chunks = 0, result = '', done = false, cancellation: Promise<void> | undefined;
+    const cancel = () => { if (!done && !cancellation) cancellation = reader.cancel().catch(() => {}); };
+    signal.addEventListener('abort', cancel, { once: true });
     try { for (;;) {
-      const part = await step(() => reader.read()); if (part.done) break;
-      bytes += part.value.byteLength; if (bytes > limit) fail('invalid_input'); result += decoder.decode(part.value, { stream: true });
+      const part = await step(() => reader.read()); if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > limit) fail('invalid_input');
+      result += decoder.decode(part.value, { stream: true });
     } return result + decoder.decode(); }
-    finally { void reader.cancel().catch(() => {}); }
+    finally { signal.removeEventListener('abort', cancel); cancel(); if (cancellation) await cancellation; reader.releaseLock(); }
   }
   try {
     if (!origin || !cookie || !retentionCommand(commandRef) || request.method !== 'POST' || contentType !== 'application/json'
@@ -93,9 +96,20 @@ export async function retentionOriginal(request: Request): Promise<RetentionResu
     const endDate = new Date(startedAt - 2 * 86400000).toISOString().slice(0, 10);
     const json = async (host: 'www.googleapis.com' | 'youtubeanalytics.googleapis.com', path: string, params: Record<string, string>) => {
       await stillNative(); const endpoint = new URL(path, `https://${host}`); endpoint.search = new URLSearchParams(params).toString();
-      const response = await step(() => nativeFetch(endpoint.href, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', redirect: 'error', signal }));
-      if (!response.ok || response.redirected || !/^application\/json(?:;|$)/i.test(response.headers.get('content-type') ?? '')) fail();
-      return retentionObject(JSON.parse(await text(response.body, 262144)));
+      const response = await step(async () => {
+        const own = await nativeFetch(endpoint.href, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', redirect: 'error', signal });
+        // A late response belongs to this original only. Drain its body without
+        // reviving the caller, issuing follow-on reads or creating recovery.
+        try { check(); return own; } catch (error) { await own.body?.cancel().catch(() => {}); throw error; }
+      });
+      let reading = false;
+      try {
+        check();
+        if (response.status !== 200 || response.ok !== true || response.redirected || response.url && response.url !== endpoint.href
+          || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') fail();
+        reading = true;
+        return retentionObject(JSON.parse(await text(response.body, 262144)));
+      } finally { if (!reading) await response.body?.cancel().catch(() => {}); }
     };
     let videoIds: string[];
     if (input.videoId) videoIds = [input.videoId];
