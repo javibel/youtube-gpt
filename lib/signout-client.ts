@@ -14,6 +14,36 @@ export function signoutOtherCookieWriterKind() { const kind = heldSessionCookieW
 export function signoutHeldByOtherCookieWriter() { return !!signoutOtherCookieWriterKind(); }
 export function subscribeSignout(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 
+// Only the body of this exact native CSRF GET or signout POST is consumed.
+// Intrinsic body failure never releases the live cookie permit. A UI timeout or
+// retirement neither cancels an issued request nor substitutes a new request.
+async function signoutBody(response: Response, endpoint: '/api/auth/csrf' | '/api/auth/signout'): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL(endpoint, window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native signout unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native signout unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup; cancellation cannot undo an issued POST or
+    // prove authentication, freshness, shutdown, or another original's result.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function currentSignoutOriginal() { return retained; }
 export function trustedSignoutOutcome(attempt: SignoutAttempt) { return originals.get(attempt)?.outcome; }
 export function signoutBlocked() {
@@ -47,7 +77,7 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
     }
     try {
       const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-      const csrf: unknown = await csrfResponse.json();
+      const csrf = await signoutBody(csrfResponse, '/api/auth/csrf');
       if (csrfResponse.status !== 200 || csrfResponse.ok !== true || !csrf || typeof csrf !== 'object'
         || Array.isArray(csrf) || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf)
         || typeof csrf.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(csrf.csrfToken))
@@ -65,7 +95,7 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Return-Redirect': '1',
           'X-YTV-Signout-Expectation': encodeURIComponent(JSON.stringify(captured)) },
         body: new URLSearchParams({ csrfToken: csrf.csrfToken, callbackUrl: '/' }).toString() });
-      const result: unknown = await response.json();
+      const result = await signoutBody(response, '/api/auth/signout');
       // The original HTTP and its own body must both acknowledge this native POST.
       // No SDK broadcast/refresh adds another session-cookie writer before navigation.
       if (response.status !== 200 || response.ok !== true)
