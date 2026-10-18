@@ -25,6 +25,35 @@ function receipt(value: unknown, a: CancellationAttempt): CancellationReceipt | 
     || value.subscriptionId !== a.selection.subscriptionId || value.cancelAtPeriodEnd !== true || value.mode !== 'simulated') return null;
   return Object.freeze({ ok: true, userId: a.owner.userId, email: a.owner.email, key: a.key, subscriptionId: a.selection.subscriptionId, cancelAtPeriodEnd: true, mode: 'simulated' });
 }
+// Consume only this captured simulated cancellation response. A UI timeout
+// cannot cancel/reissue the POST, remove denial or establish operative success.
+async function cancellationBody(response: Response, canConsume: () => boolean): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (!canConsume() || response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL('/api/stripe/cancel', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native simulated cancellation response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native simulated cancellation response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup. It cannot undo the POST, acknowledge the
+    // cancellation, remove the marker or recover another original's authority.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 function bounded(original: Promise<CancellationOutcome>, deadline: number): Promise<CancellationOutcome> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return (async () => {
@@ -53,9 +82,8 @@ export function beginCancellation(owner: CancellationOwner, selection: Cancellat
   const original = Promise.resolve().then(async (): Promise<CancellationOutcome> => {
     try {
       if (performance.now() >= deadline || !canConsume()) return uncertain();
-      const response = await fetch('/api/stripe/cancel', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
-      if (!canConsume()) return uncertain();
-      const value: unknown = await response.json();
+      const response = await fetch('/api/stripe/cancel', { method: 'POST', cache: 'no-store', redirect: 'error', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
+      const value: unknown = await cancellationBody(response, canConsume);
       if (!canConsume()) return uncertain();
       const accepted = response.ok && response.status === 200 ? receipt(value, a) : null;
       return accepted ? Object.freeze({ status: 'confirmed', receipt: accepted }) : uncertain();
