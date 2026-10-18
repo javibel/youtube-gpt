@@ -8,6 +8,36 @@ const originals = new WeakMap<GoogleSigninAttempt, Original>();
 let retained: GoogleSigninAttempt | undefined;
 const unknown: GoogleSigninOutcome = Object.freeze({ status: 'unconfirmed' });
 
+// Only the body of this exact native CSRF GET or Google initiation POST is consumed.
+// Intrinsic body failure never releases the live cookie permit. A UI timeout or
+// retirement neither cancels an issued request nor substitutes a new request.
+async function googleBody(response: Response, endpoint: '/api/auth/csrf' | '/api/auth/signin/google'): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL(endpoint, window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native Google initiation unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > (endpoint === '/api/auth/csrf' ? 4096 : 65536))
+        throw Error('Native Google initiation unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup; cancellation cannot undo an issued POST or
+    // prove authentication, freshness, shutdown, or another original's result.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function currentGoogleSigninOriginal() { return retained; }
 export function ownsGoogleSigninOriginal(attempt: GoogleSigninAttempt, context: object) { return originals.get(attempt)?.context === context; }
 export function googleSigninBlocked() { const prior = retained && originals.get(retained); return sessionCookieWriterBusy() || !!prior && prior.outcome?.status !== 'not-issued'; }
@@ -55,7 +85,7 @@ export function beginGoogleSignin(callbackUrl: string, origin: string, context: 
     try {
       if (!original.allowPost || !active()) return notIssued();
       const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-      const csrf: unknown = await csrfResponse.json();
+      const csrf = await googleBody(csrfResponse, '/api/auth/csrf');
       if (csrfResponse.status !== 200 || csrfResponse.ok !== true || !csrf || typeof csrf !== 'object' || Array.isArray(csrf)
         || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf) || typeof csrf.csrfToken !== 'string'
         || !/^[a-f0-9]{64}$/.test(csrf.csrfToken)) return settle(unknown);
@@ -66,7 +96,7 @@ export function beginGoogleSignin(callbackUrl: string, origin: string, context: 
       const response = await fetch('/api/auth/signin/google', { method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Return-Redirect': '1' },
         body: new URLSearchParams({ csrfToken: csrf.csrfToken, callbackUrl: callback }).toString() });
-      const body: unknown = await response.json();
+      const body = await googleBody(response, '/api/auth/signin/google');
       if (response.status !== 200 || response.ok !== true || !body || typeof body !== 'object' || Array.isArray(body)
         || Object.keys(body).length !== 1 || !('url' in body) || typeof body.url !== 'string') return settle(unknown);
       const url = authorizationTarget(body.url, origin);
