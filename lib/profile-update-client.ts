@@ -43,6 +43,35 @@ export function claimConfirmedProfileLanguage(a: ProfileAttempt, r: ProfileRead)
   if (appliedLanguages.has(a) || result?.status !== 'confirmed' || result.receipt.operation !== 'language' || !profileValueConfirmed(a, r)) return null;
   appliedLanguages.add(a); return result.receipt.lang;
 }
+// Bind the native body before a PATCH can settle or release its own marker.
+// A UI observer timeout cannot cancel/reissue the captured original.
+async function profileUpdateBody(response: Response): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (![200, 400, 401, 404, 409].includes(response.status) || response.ok !== (response.status === 200) || response.redirected
+      || response.url && response.url !== new URL('/api/user/profile', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native profile update response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 8192)
+        throw Error('Native profile update response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Await only this body's cleanup. It cannot acknowledge a mutation, remove
+    // its denial marker or recover another original/coordinator's authority.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure preserves the original uncertainty. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function beginProfileUpdate(owner: ProfileOwner, input: unknown): ProfileAttempt | null {
   if (!id(owner.userId) || typeof owner.email !== 'string' || !owner.email || !validProfileSelection(input) || profileUpdateBlocked(owner)) return null;
   let key: string; try { key = crypto.randomUUID(); if (!id(key)) return null; } catch { return null; }
@@ -54,10 +83,10 @@ export function beginProfileUpdate(owner: ProfileOwner, input: unknown): Profile
     let outcome = uncertain();
     try {
       if (performance.now() >= deadline) return outcome;
-      const res = await fetch('/api/user/profile', { method: 'PATCH', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(selected) });
-      const value: unknown = await res.json(), receipt = res.ok && res.status === 200 ? acknowledgement(value, a) : null;
+      const res = await fetch('/api/user/profile', { method: 'PATCH', redirect: 'error', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(selected) });
+      const value = await profileUpdateBody(res), receipt = res.ok && res.status === 200 ? acknowledgement(value, a) : null;
       if (receipt) outcome = Object.freeze({ status: 'confirmed', receipt });
-      else if (!res.ok && object(value) && [[401, 'Unauthorized'], [400, 'invalid_input'], [404, 'profile_not_found'], [409, 'profile_changed']].some(([status, error]) => res.status === status && value.error === error))
+      else if (!res.ok && object(value) && Object.keys(value).length === 1 && [[401, 'Unauthorized'], [400, 'invalid_input'], [404, 'profile_not_found'], [409, 'profile_changed']].some(([status, error]) => res.status === status && value.error === error))
         outcome = Object.freeze({ status: 'rejected', error: value.error as string });
       if (outcome.status !== 'unconfirmed') { try { sessionStorage.removeItem(scope); owners.delete(scope); } catch { denied.add(scope); } }
     } catch { /* Preserve uncertainty and same live original; no abort/retry/reconstruction. */ }
