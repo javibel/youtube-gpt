@@ -41,7 +41,7 @@ function receipt(value: unknown, a: PasswordAttempt): PasswordReceipt | null {
     notification: value.notification as PasswordReceipt['notification'] });
 }
 function rejection(status: number, value: unknown): PasswordOutcome | null {
-  if (!object(value) || typeof value.error !== 'string') return null;
+  if (!object(value) || Object.keys(value).length !== 1 || typeof value.error !== 'string') return null;
   const error = value.error;
   if (status === 401 && ['Unauthorized', 'No autorizado'].includes(error)) return Object.freeze({ status: 'rejected', error: 'unauthorized' });
   if (status === 409 && error === 'password_changed') return Object.freeze({ status: 'rejected', error: 'changed' });
@@ -50,6 +50,35 @@ function rejection(status: number, value: unknown): PasswordOutcome | null {
   if (['Cannot change password for this account', 'No se puede cambiar la contraseña de esta cuenta'].includes(error)) return Object.freeze({ status: 'rejected', error: 'passwordless' });
   if (error === 'invalid_input') return Object.freeze({ status: 'rejected', error: 'invalid' });
   return null;
+}
+// Consume only the response body of this captured native password POST.
+// Observer timeout cannot cancel/reissue it or release its denial marker.
+async function passwordBody(response: Response, canConsume: () => boolean): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (!canConsume() || ![200, 400, 401, 409].includes(response.status) || response.ok !== (response.status === 200) || response.redirected
+      || response.url && response.url !== new URL('/api/user/change-password', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native password response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native password response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup. It cannot undo the POST, acknowledge the
+    // password, remove the marker or recover another original's authority.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
 }
 function bounded(original: Promise<PasswordOutcome>, deadline: number): Promise<PasswordOutcome> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -80,10 +109,9 @@ export function beginPasswordChange(owner: PasswordOwner, input: { currentPasswo
   const original = Promise.resolve().then(async (): Promise<PasswordOutcome> => {
     try {
       if (performance.now() >= deadline || !canConsume()) return uncertain();
-      const response = await fetch('/api/user/change-password', { method: 'POST', cache: 'no-store',
+      const response = await fetch('/api/user/change-password', { method: 'POST', redirect: 'error', cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
-      if (!canConsume()) return uncertain();
-      const value: unknown = await response.json();
+      const value = await passwordBody(response, canConsume);
       if (!canConsume()) return uncertain();
       const accepted = response.ok && response.status === 200 ? receipt(value, a) : null;
       return accepted ? Object.freeze({ status: 'confirmed', receipt: accepted }) : rejection(response.status, value) ?? uncertain();
