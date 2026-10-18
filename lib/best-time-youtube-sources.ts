@@ -51,10 +51,42 @@ export function createBestTimeYouTubeSources(referenceAt: string, signal: AbortS
     url.search = new URLSearchParams(parameters).toString();
     const response = await fetchOriginal(url.toString(), { method: 'GET', headers: { Authorization: 'Bearer ' + token },
       signal, redirect: 'error', cache: 'no-store' });
-    check();
-    if (!response.ok || response.redirected) return fail();
-    const data: unknown = await response.json();
-    check(); return data;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false, cancellation: Promise<void> | undefined;
+    // Consume only the body of this exact retained HTTP original. Limits and
+    // source identity bind data; they never establish consent or recovery.
+    const cancel = () => {
+      if (!done && !cancellation) cancellation = (reader ? reader.cancel() : response.body?.cancel())?.catch(() => {});
+    };
+    signal.addEventListener('abort', cancel, { once: true });
+    try {
+      check();
+      if (signal.aborted || response.status !== 200 || response.ok !== true || response.redirected
+        || response.url && response.url !== url.toString()
+        || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+        || !response.body) return fail();
+      reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8', { fatal: true });
+      let raw = '', bytes = 0, chunks = 0;
+      while (true) {
+        check();
+        if (signal.aborted) return fail();
+        const part = await reader.read();
+        check();
+        if (signal.aborted) return fail();
+        if (part.done) { done = true; break; }
+        if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 1_048_576) return fail();
+        raw += decoder.decode(part.value, { stream: true });
+      }
+      raw += decoder.decode();
+      check();
+      const data: unknown = JSON.parse(raw);
+      check(); return data;
+    } finally {
+      signal.removeEventListener('abort', cancel);
+      cancel();
+      if (cancellation) await cancellation;
+      reader?.releaseLock();
+    }
   };
   return Object.freeze({ referenceAt,
     async search(input, check) {
