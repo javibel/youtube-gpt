@@ -8,6 +8,35 @@ const live = new Map<string, ProfileRead>(), settled = new WeakMap<ProfileRead, 
 let sequence = 0;
 const failed = (): ProfileReadOutcome => Object.freeze({ status: 'error' });
 export const trustedProfileRead = (r: ProfileRead): ProfileReadOutcome | undefined => settled.get(r);
+// Bound the captured profile GET body before granting trusted profile data.
+// UI timeout/retirement never substitutes a read or releases another command.
+async function profileBody(response: Response): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL('/api/user/stats', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native profile response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 65536)
+        throw Error('Native profile response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join only this body's cleanup before settling and admitting a queued read.
+    // Cancellation cannot prove mutation, authentication or recovery authority.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains a failed profile read. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function beginProfileRead(owner: ProfileOwner, afterCurrent = false): ProfileRead {
   const own = Object.freeze({ userId: owner.userId, email: owner.email }), key = JSON.stringify([own.userId, own.email]), existing = live.get(key);
   if (existing && !afterCurrent) return existing;
@@ -17,8 +46,8 @@ export function beginProfileRead(owner: ProfileOwner, afterCurrent = false): Pro
     try {
       if (existing) await existing.original;
       if (!own.userId || !own.email || performance.now() >= deadline) return failed();
-      const res = await fetch('/api/user/stats', { method: 'GET', cache: 'no-store' }), value: unknown = await res.json();
-      if (!res.ok || res.status !== 200) return failed();
+      const response = await fetch('/api/user/stats', { method: 'GET', redirect: 'error', cache: 'no-store' });
+      const value = await profileBody(response);
       const raw = value as { user?: { lang?: unknown } };
       if (raw?.user?.lang !== 'es' && raw?.user?.lang !== 'en') return failed();
       const decoded = decodeDashboardStats(value, own.userId, own.email), data = {
