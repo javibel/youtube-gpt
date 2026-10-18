@@ -31,6 +31,35 @@ function receipt(value: unknown, a: CheckoutAttempt): CheckoutReceipt | null {
   } catch { return null; }
   return Object.freeze({ userId: a.owner.userId, email: a.owner.email, key: a.key, plan: a.plan, lang: a.lang, mode: 'simulated', url: value.url });
 }
+// Read only this simulated facade's body. Timeout never cancels its POST,
+// removes billing denial or proves payment. 8192 bytes cover the bounded receipt.
+async function checkoutBody(response: Response, canConsume: () => boolean): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (!canConsume() || response.status !== 200 || response.ok !== true || response.redirected
+      || response.url && response.url !== new URL('/api/stripe/checkout', window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native simulated checkout response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 8192)
+        throw Error('Native simulated checkout response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup. It cannot undo the POST, acknowledge the
+    // checkout, remove the marker or recover another original's authority.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 function bounded(original: Promise<CheckoutOutcome>, deadline: number): Promise<CheckoutOutcome> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return (async () => {
@@ -59,9 +88,8 @@ export function beginCheckout(owner: CheckoutOwner, plan: CheckoutPlan, lang: 'e
   const original = Promise.resolve().then(async (): Promise<CheckoutOutcome> => {
     try {
       if (performance.now() >= deadline || !canConsume()) return uncertain();
-      const response = await fetch('/api/stripe/checkout', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
-      if (!canConsume()) return uncertain();
-      const value: unknown = await response.json();
+      const response = await fetch('/api/stripe/checkout', { method: 'POST', cache: 'no-store', redirect: 'error', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
+      const value: unknown = await checkoutBody(response, canConsume);
       if (!canConsume()) return uncertain();
       const accepted = response.ok && response.status === 200 ? receipt(value, a) : null;
       return accepted ? Object.freeze({ status: 'confirmed', receipt: accepted }) : uncertain();
