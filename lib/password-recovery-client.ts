@@ -15,6 +15,38 @@ export function recoveryBlocked() { const own = retained && originals.get(retain
 export function retireRecoveryProgress(attempt: RecoveryAttempt) { const own = originals.get(attempt); if (own) { own.dispatchAllowed = false; own.claimAllowed = false; } }
 export function canObserveRecovery(attempt: RecoveryAttempt, context: object) { const own = originals.get(attempt); return !!own && own.context === context && own.claimAllowed; }
 
+// Only the body of this exact native password recovery POST is consumed.
+// Intrinsic body failure never releases the live cookie permit. A UI timeout or
+// retirement neither cancels an issued request nor substitutes a new request.
+async function recoveryBody(response: Response, mode: RecoveryInput['mode']): Promise<unknown> {
+  const endpoint = '/api/auth/' + (mode === 'forgot' ? 'forgot-password' : 'reset-password');
+  const successStatus = mode === 'forgot' ? 202 : 200;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (![successStatus, 400, 429].includes(response.status) || response.ok !== (response.status === successStatus) || response.redirected
+      || response.url && response.url !== new URL(endpoint, window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native password response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native password response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup; cancellation cannot undo an issued POST or
+    // prove authentication, freshness, shutdown, or another original's result.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 export function beginPasswordRecovery(input: RecoveryInput, context: object, active: () => boolean): RecoveryAttempt | undefined {
   const prior = retained && originals.get(retained);
   if (recoveryBlocked() || prior?.context === context && (prior.status === 'accepted' || prior.status === 'updated')
@@ -44,16 +76,9 @@ export function beginPasswordRecovery(input: RecoveryInput, context: object, act
     try {
       if (!own.dispatchAllowed || !active()) return settle(Object.freeze({ status: 'not-issued' }));
       const endpoint = '/api/auth/' + (mode === 'forgot' ? 'forgot-password' : 'reset-password');
-      const expected = new URL(endpoint, window.location.origin).href;
       const response = await fetch(endpoint, { method: 'POST', redirect: 'error', cache: 'no-store', credentials: 'omit',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(captured) });
-      if (response.redirected || response.url && response.url !== expected
-        || !response.headers.get('content-type')?.toLowerCase().includes('application/json') || !response.body) return settle(unknown);
-      const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
-      let text = '', bytes = 0;
-      try { while (true) { const part = await reader.read(); if (part.done) break; bytes += part.value.byteLength; if (bytes > 4096) return settle(unknown); text += decoder.decode(part.value, { stream: true }); } text += decoder.decode(); }
-      finally { reader.releaseLock(); }
-      const body: unknown = JSON.parse(text);
+      const body = await recoveryBody(response, mode);
       if (!body || typeof body !== 'object' || Array.isArray(body)) return settle(unknown);
       const row = body as Record<string, unknown>;
       if (mode === 'forgot' && response.status === 202 && response.ok === true
