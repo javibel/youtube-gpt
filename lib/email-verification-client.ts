@@ -9,6 +9,36 @@ type Original = { context: object; promise: Promise<CodeOutcome>; permit: NonNul
 const originals = new WeakMap<EmailAttempt, Original>();
 let retained: EmailAttempt | undefined;
 const unknown: EmailOutcome = Object.freeze({ status: 'unconfirmed' });
+// Only the body of this exact native verification or resend POST is consumed.
+// Intrinsic body failure never releases the live cookie permit. A UI timeout or
+// retirement neither cancels an issued request nor substitutes a new request.
+async function emailBody(response: Response, endpoint: '/api/auth/verify-email' | '/api/auth/resend-verification'): Promise<unknown> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined, done = false;
+  try {
+    if (![200, 400, 429].includes(response.status) || response.ok !== (response.status === 200) || response.redirected
+      || response.url && response.url !== new URL(endpoint, window.location.origin).href
+      || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
+      || !response.body) throw Error('Native email response unavailable');
+    reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let raw = '', bytes = 0, chunks = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) { done = true; break; }
+      if (!(part.value instanceof Uint8Array) || ++chunks > 256 || (bytes += part.value.byteLength) > 4096)
+        throw Error('Native email response unavailable');
+      raw += decoder.decode(part.value, { stream: true });
+    }
+    raw += decoder.decode();
+    return JSON.parse(raw) as unknown;
+  } finally {
+    // Join this body's own cleanup; cancellation cannot undo an issued POST or
+    // prove authentication, freshness, shutdown, or another original's result.
+    try { if (!done) await (reader ? reader.cancel() : response.body?.cancel()); }
+    catch { /* Private cleanup failure remains unconfirmed. */ }
+    finally { reader?.releaseLock(); }
+  }
+}
 const canStartAfter = (code: CodeOutcome | undefined) => !!code && ['resend-accepted', 'invalid', 'expired', 'rate-limited', 'not-issued'].includes(code);
 export function emailVerificationBlocked() { const prior = retained && originals.get(retained); return sessionCookieWriterBusy() || !!prior && !canStartAfter(prior.code); }
 export function currentEmailOriginal() { return retained; }
@@ -34,7 +64,7 @@ export function beginEmailCommand(kind: EmailAttempt['kind'], input: Readonly<{ 
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(kind === 'verify' ? { email: captured.email, code: captured.code } : { email: captured.email, lang: captured.lang }),
       });
-      const body: unknown = await response.json();
+      const body = await emailBody(response, kind === 'verify' ? '/api/auth/verify-email' : '/api/auth/resend-verification');
       if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1) return settle('unconfirmed');
       if (kind === 'verify' && response.status === 400 && 'error' in body && body.error === 'invalid_code') return settle('invalid');
       if (kind === 'verify' && response.status === 400 && 'error' in body && body.error === 'expired_code') return settle('expired');
