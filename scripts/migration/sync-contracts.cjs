@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs');const path=require('node:path');const {createHash}=require('node:crypto');
 const {validate}=require('./isolation.cjs');
-const FILES=Object.freeze(['core.cjs','core.d.cts','core.test.cjs','coding.cjs','coding.d.cts','coding.test.cjs','control-store.cjs','control-store.d.cts','control-test.sql','task-runner.cjs','task-runner.d.cts','task-runner.test.cjs','build-schemas.cjs','request.schema.json','result.schema.json','configuration.schema.json','coding-request.schema.json','coding-result.schema.json','output-schema.schema.json','README.md']);
+const FILES=Object.freeze(['core.cjs','core.d.cts','core.test.cjs','coding.cjs','coding.d.cts','coding.test.cjs','control-store.cjs','control-store.d.cts','control-test.sql','control-operational.sql','postgres-storage.cjs','postgres-storage.d.cts','postgres-connections.cjs','postgres-connections.d.cts','task-runner.cjs','task-runner.d.cts','task-runner.test.cjs','build-schemas.cjs','request.schema.json','result.schema.json','configuration.schema.json','coding-request.schema.json','coding-result.schema.json','output-schema.schema.json','README.md']);
 const digest=text=>createHash('sha256').update(text.replace(/\r\n/g,'\n')).digest('hex');
 function manifestFor(contents){return {contractVersion:'1.0',normalization:'utf8-lf',files:Object.fromEntries(FILES.map(name=>[name,digest(contents[name])]))};}
 function verify(contents,manifest){

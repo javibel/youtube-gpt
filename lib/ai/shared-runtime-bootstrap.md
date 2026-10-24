@@ -13,14 +13,25 @@ no SDK, credential, model, tariff, transport or fallback defaults. Declarations
 and function references are captured before the first asynchronous read.
 
 One private registry serves configuration validation and task admission. Every
-profile must cover the entire supplied web AI task catalog, including base
+profile must cover the entire supplied global task catalog, including base
 assignments and exceptions. Reader, activator and executor capabilities retain
 separate roles. Bounded preparation checks native role/endpoint/ACL observations,
 immutable configuration, runtime compatibility, credential availability without
 secret reads, and every explicitly bound budget. A grant is checked again for
 each task; catalog capabilities cannot be removed by a caller. Preparation only
-reads. It cannot publish a configuration, release a reservation or execute a
+reads. Execution policies and budgets cover the web's own AI tasks only; agent
+and coding declarations can be validated without granting web execution.
+It cannot publish a configuration, release a reservation or execute a
 model.
+
+The operational deployment owner supplies new native pools for the three
+dedicated roles and an original secret reader. Trusted host bootstrap code must
+prepare that deployment and register it with `provideOperationalWebDeployment`
+before Next instrumentation requests installation. The environment flag alone
+is insufficient. The protected fixture and operational branch cannot coexist.
+Closing pool ownership is not evidence of completed provider requests; the host
+must first seal request ingress and observe native request draining. Uncertain
+executions and retained budgets require genuine reconciliation, never replay.
 
 After all checks, one immutable global property publishes both the native
 admin-session service and task factory atomically. Duplicate server bundles

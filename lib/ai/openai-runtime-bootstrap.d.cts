@@ -1,6 +1,7 @@
+import type { ControlSchema } from '../../contracts/ai/v1/control-store.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 export interface OpenAIRuntimeDependencies {
-  database: { role: 'executor'; transaction: <T>(fn: (tx: { query: (sql: string, args: unknown[]) => Promise<unknown[]> }) => Promise<T>) => Promise<T> };
+  database: { role: 'executor'; controlSchema?: ControlSchema; transaction: <T>(fn: (tx: { query: (sql: string, args: unknown[]) => Promise<unknown[]> }) => Promise<T>) => Promise<T> };
   resolveAddress: (context: { hostname: string; signal: AbortSignal }) => Promise<string>;
   readCredential: (context: { credentialRef: string; signal: AbortSignal }) => Promise<string>;
   credentialRef: string;

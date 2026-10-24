@@ -13,8 +13,15 @@ export async function register() {
       process.env[key] = val.trim();
     }
   }
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_MIGRATION_WEB_TEST === '1' && process.env.YTV_OPERATIONAL_RUNTIME === '1') {
+    throw new Error('Fixture and operational startup cannot share a process');
+  }
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_MIGRATION_WEB_TEST === '1') {
     const { installLocalFixture } = await import('./lib/migration/local-fixture-runtime');
     await installLocalFixture();
+  }
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_OPERATIONAL_RUNTIME === '1') {
+    const { installConfiguredOperationalWebRuntime } = await import('./lib/ai/operational-runtime');
+    await installConfiguredOperationalWebRuntime();
   }
 }

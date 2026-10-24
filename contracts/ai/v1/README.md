@@ -71,3 +71,9 @@ and subtracts claim acknowledgement time from the remaining deadline. Tests use
 only the identified synthetic PostgreSQL schema.
 
 Coding results may include an optional string `answer` for explanations and diagnoses. Existing receipts without it remain valid. It does not assert tests, edits or execution; those remain in their separate structured fields.
+
+## Explicit operational control storage
+
+RoleBoundDatabase.controlSchema selects exactly ytv_ai_test_v1 (legacy isolated default) or ytv_ai_v1. An operational capability must select the latter explicitly; SQL parameters are never rewritten. The inert control-operational.sql creates a fresh, separate schema and three roles with restricted control-schema grants, no passwords and no active configuration. Existing database-wide PUBLIC grants are not changed. It deliberately fails on existing resources instead of adopting old authority. postgres-storage.cjs requires original native connect functions, verified TLS, exact database/session roles, no memberships or elevated role flags, and preserves uncertainty after lost commit acknowledgements. This is preparation code, not production activation permission.
+
+postgres-connections.cjs owns new native pools supplied by trusted deployment code. It captures an original secret-reader function and pool constructor, fixes the role names, database target and verified TLS policy, and probes native sessions before returning connection functions. The web receives reader, activator and executor connections; the agent receives reader and executor only. Construction performs no I/O. Failed or cancelled original preparations cannot be renewed; late credentials cannot create replacement pools. Pool closure reports its native acknowledgement without recovering executions or clearing retained budgets.

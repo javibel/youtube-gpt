@@ -4,6 +4,7 @@ import type { Provider } from '../../contracts/ai/v1/core.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity'> {
  adapters: Provider[];
+ catalogAdapters?: Pick<Provider,'providerId'|'adapterVersion'|'enabled'|'credentialRef'|'models'>[];
  executorDatabase: OpenAIRuntimeDependencies['database'];
  storageIdentity: AdministrativeConfigurationDependencies['storageIdentity'] & {executorRole:string};
  policies: OpenAIRuntimeDependencies['policies'];

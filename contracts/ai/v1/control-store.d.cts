@@ -1,6 +1,8 @@
 import type { Registry, Configuration, AiRequest, CodingRequest, Snapshot, Usage, Status, Result } from './core.cjs';
 export interface Transaction { query(sql: string, parameters?: unknown[]): Promise<Record<string, unknown>[]> }
+export type ControlSchema = 'ytv_ai_test_v1' | 'ytv_ai_v1';
 export interface RoleBoundDatabase {
+  controlSchema?: ControlSchema;
   role: 'reader' | 'activator' | 'executor';
   transaction<T>(work: (transaction: Transaction) => Promise<T>): Promise<T>;
 }
@@ -18,3 +20,5 @@ export interface ControlStore {
   reconcile(runId: string, outcome: { status: Status | 'uncertain'; usage?: Partial<Usage>; result?: Readonly<Result> }): Promise<{ state: 'settled' | 'uncertain'; replay?: boolean; retainedMicros?: number }>;
 }
 export declare function createControlStore(database: RoleBoundDatabase, registry: Registry): Readonly<ControlStore>;
+export declare function controlSchemaFor(database: Pick<RoleBoundDatabase,'controlSchema'>): ControlSchema;
+export declare function sqlForControlSchema(schema: ControlSchema, sql: string): string;

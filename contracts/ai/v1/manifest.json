@@ -8,9 +8,14 @@
     "coding.cjs": "c6239a227218a35c8fa68527734df4be936f68a3726c966ae7061a0948fd2359",
     "coding.d.cts": "b9e06e02bc7effb98483b10a4c05cfc1ee0b5260071cd6154ae9438458135978",
     "coding.test.cjs": "15d7d422871fe8a96f27a2319e14043174e6a75dcc9ad0c976ac600f3158f32d",
-    "control-store.cjs": "69efc32ac13472ac17c7e3a4783377f2623fbf0e880f183573979a590fd2a582",
-    "control-store.d.cts": "15239650810a333d9dbfdea228d1da97b56d01284047bd2d9f94f31b000ed5ac",
+    "control-store.cjs": "e32853b4661f5f0129c175380a53846cf6d34a83804120f01fae28612a106a9d",
+    "control-store.d.cts": "09f910547092959168b74f304f766157400b4ef7aeb7a0a9580664b3bd5179a8",
     "control-test.sql": "87fc0398b4ffd3bd9253177b5a3e3f8b05a76233b298afd1cd09937e50186d5f",
+    "control-operational.sql": "83c5d7005ce88988565d736e5fdf1587c44fcac6ec5ee5db28f7c7022bc8d5e5",
+    "postgres-storage.cjs": "1007f7bbe7e7d2f8cdeff241b0fb453528048ebee641a273a779df87d702ad00",
+    "postgres-storage.d.cts": "1b2113597d176f69dc6f2911e4310972b163c64090996449cacb687b41cfea34",
+    "postgres-connections.cjs": "78a3014450680c2cefbefa8e0bff3daa48737a61592ef8583606c3bc529dd6be",
+    "postgres-connections.d.cts": "52a2ba8ed37037dd410f33d2c8f66ed2dfbe6c6604f3a1cc190a4c8f28be63fa",
     "task-runner.cjs": "ef89e0825fa3702c466f0a3c9814c5282b7e31fed24e438717ea6bc1110b2c61",
     "task-runner.d.cts": "41186fcade079cf8ac74109a97c22062f9b68239a980a0cf4497096e7bef4b71",
     "task-runner.test.cjs": "9eed433b665310fa67d6dcfb9c16b76aa100cc0654339fc6b85eff4f60ca0750",
@@ -21,6 +26,6 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "8644ee1100af23f4e41d284f1ae6d038519dec5211e0bdb90a197c346c8d3fd2",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
-    "README.md": "1cca6abb5080c4f15a3fcb06915c3d7edd832b5d161f8af972cdcb1b8c54abfe"
+    "README.md": "f14b2803a42ee70918407b162679bff8a013814476a9fd65874c404106346579"
   }
 }

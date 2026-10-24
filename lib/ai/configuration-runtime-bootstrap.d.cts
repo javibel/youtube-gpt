@@ -1,9 +1,10 @@
+import type { ControlSchema } from '../../contracts/ai/v1/control-store.cjs';
 import type { ConfigurationDependencies } from './configuration-service.cjs';
 export interface AdministrativeConfigurationDependencies {
  registry: ConfigurationDependencies['registry'];
- readerDatabase: {role:'reader';transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
- activatorDatabase: {role:'activator';transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
- storageIdentity: {databaseName:string;readerRole:string;activatorRole:string};
+ readerDatabase: {role:'reader';controlSchema?:ControlSchema;transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
+ activatorDatabase: {role:'activator';controlSchema?:ControlSchema;transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
+ storageIdentity: {controlSchema?:ControlSchema;databaseName:string;readerRole:string;activatorRole:string};
  taskCatalog: ConfigurationDependencies['taskCatalog'];
  getRuntimes: ConfigurationDependencies['getRuntimes'];
  checkCredential: (context:{runtimeId:string;credentialRef:string;providerId:string;signal?:AbortSignal})=>Promise<boolean>;
