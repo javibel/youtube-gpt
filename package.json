@@ -64,6 +64,9 @@
     "typescript": "^5"
   },
   "overrides": {
-    "undici": "6.28.1"
+    "undici": "6.28.1",
+    "source-map-js": "1.2.2",
+    "qs": "6.16.0",
+    "baseline-browser-mapping": "2.11.0"
   }
 }
