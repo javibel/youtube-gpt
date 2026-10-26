@@ -26,6 +26,8 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "8644ee1100af23f4e41d284f1ae6d038519dec5211e0bdb90a197c346c8d3fd2",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
+    "compiled-blog.cjs": "5b1c6bd67747d14119dda9ecd8021b4e0b530c2489f0a339a8d1099a95e416ff",
+    "compiled-blog.d.cts": "c7233b4c70f984759d152b5fcd99d68736cfcbb7344bf9ab062d6fcdbf4d239b",
     "README.md": "f14b2803a42ee70918407b162679bff8a013814476a9fd65874c404106346579"
   }
 }

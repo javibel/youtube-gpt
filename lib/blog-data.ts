@@ -1,6 +1,9 @@
 // Blog content — bilingual (es/en)
 // To add a new article: add an entry to BLOG_POSTS and the full body to ARTICLE_BODIES
 
+import { validatePublicBlogDocument } from '../contracts/ai/v1/compiled-blog.cjs';
+import publicationContent from './blog-deliveries.json';
+
 export type Lang = 'es' | 'en';
 
 export interface BlogPost {
@@ -12,6 +15,7 @@ export interface BlogPost {
   title: { es: string; en: string };
   excerpt: { es: string; en: string };
   image?: string;
+  languages?: Lang[];
 }
 
 export type BlockType =
@@ -5472,10 +5476,43 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   },
 };
 
-export function getPost(slug: string): BlogPost | undefined {
-  return BLOG_POSTS.find((p) => p.slug === slug);
+// New deliveries contain one explicitly approved language. Existing articles
+// retain their original bilingual content and cannot be overwritten by delivery.
+const legacySlugs = new Set(BLOG_POSTS.map((post) => post.slug));
+const publicDeliveries = validatePublicBlogDocument(publicationContent).deliveries;
+for (const delivery of publicDeliveries) {
+  if (legacySlugs.has(delivery.slug)) throw new Error('Blog delivery collides with an existing article');
+  let post = BLOG_POSTS.find((value) => value.slug === delivery.slug);
+  if (!post) {
+    post = {
+      slug: delivery.slug, cat: delivery.cat, readMin: delivery.readMin,
+      date: { es: delivery.publishedAt, en: delivery.publishedAt },
+      author: { name: delivery.author.name, avatar: delivery.author.avatar, role: { es: '', en: '' } },
+      title: { es: '', en: '' }, excerpt: { es: '', en: '' }, languages: [],
+    };
+    BLOG_POSTS.unshift(post);
+    ARTICLE_BODIES[delivery.slug] = { es: [], en: [] };
+  }
+  post.languages!.push(delivery.lang);
+  post.title[delivery.lang] = delivery.title;
+  post.excerpt[delivery.lang] = delivery.excerpt;
+  post.date[delivery.lang] = delivery.publishedAt;
+  post.author.role[delivery.lang] = delivery.author.role;
+  ARTICLE_BODIES[delivery.slug][delivery.lang] = delivery.blocks;
 }
 
-export function getRelated(slug: string, cat: string, count = 3): BlogPost[] {
-  return BLOG_POSTS.filter((p) => p.slug !== slug && p.cat === cat).slice(0, count);
+export function getPosts(lang: Lang): BlogPost[] {
+  return BLOG_POSTS.filter((post) => !post.languages || post.languages.includes(lang));
+}
+
+export function getPost(slug: string, lang?: Lang): BlogPost | undefined {
+  return BLOG_POSTS.find((p) => p.slug === slug && (!lang || !p.languages || p.languages.includes(lang)));
+}
+
+export function getBlogDelivery(slug: string, lang: Lang) {
+  return publicDeliveries.find((delivery) => delivery.slug === slug && delivery.lang === lang);
+}
+
+export function getRelated(slug: string, cat: string, count = 3, lang?: Lang): BlogPost[] {
+  return BLOG_POSTS.filter((p) => p.slug !== slug && p.cat === cat && (!lang || !p.languages || p.languages.includes(lang))).slice(0, count);
 }

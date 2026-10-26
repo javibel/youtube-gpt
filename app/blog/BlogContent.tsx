@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Suspense } from 'react';
-import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
+import { getPosts, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
 import BlogFilter from './BlogFilter';
 
 const COVER_GRADIENTS: Record<string, string> = {
@@ -42,10 +42,11 @@ function BlogCover({ cat, index, image }: { cat: string; index: number; image?: 
 }
 
 export default function BlogContent({ lang }: { lang: Lang }) {
+  const posts = getPosts(lang);
   // Sin filtrar: el servidor pinta SIEMPRE los 28 posts. <BlogFilter> oculta
   // los que no casan con ?cat= tras hidratar.
-  const featured = BLOG_POSTS[0];
-  const rest = BLOG_POSTS.slice(1);
+  const featured = posts[0];
+  const rest = posts.slice(1);
 
   const catLabel = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.name[lang] ?? cat;
   const catColor = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.color ?? '#FF0033';
@@ -117,7 +118,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Featured' : 'Destacado'}
           </p>
-          <Link href={`/blog/${featured.slug}`} className="yv-glass yv-glass--hover group grid md:grid-cols-2 gap-0 transition-colors">
+          <Link href={`${lang === 'en' ? '/en' : ''}/blog/${featured.slug}`} className="yv-glass yv-glass--hover group grid md:grid-cols-2 gap-0 transition-colors">
             <div className="h-64 md:h-auto relative overflow-hidden">
               <BlogCover cat={featured.cat} index={0} image={featured.image} />
             </div>
@@ -176,7 +177,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           </p>
           <div className="grid sm:grid-cols-2 gap-6">
             {rest.map((post, i) => (
-              <Link key={post.slug} href={`/blog/${post.slug}`} data-cat={post.cat}
+              <Link key={post.slug} href={`${lang === 'en' ? '/en' : ''}/blog/${post.slug}`} data-cat={post.cat}
                 className="yv-glass yv-glass--hover group flex flex-col transition-colors">
                 <div className="h-44 relative overflow-hidden">
                   <BlogCover cat={post.cat} index={i + 1} image={post.image} />
@@ -234,8 +235,8 @@ export default function BlogContent({ lang }: { lang: Lang }) {
               {lang === 'en' ? 'Popular this week' : 'Popular esta semana'}
             </p>
             <div className="space-y-4">
-              {BLOG_POSTS.slice(0, 4).map((p, i) => (
-                <Link key={p.slug} href={`/blog/${p.slug}`} className="flex gap-3 group">
+              {posts.slice(0, 4).map((p, i) => (
+                <Link key={p.slug} href={`${lang === 'en' ? '/en' : ''}/blog/${p.slug}`} className="flex gap-3 group">
                   <span className="font-mono-jb text-[13px] text-zinc-700 mt-0.5 shrink-0">0{i + 1}</span>
                   <p className="font-display font-bold text-sm leading-tight group-hover:text-zinc-300 transition-colors">
                     {p.title[lang]}
@@ -252,7 +253,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
             </p>
             <div className="space-y-2">
               {Object.entries(BLOG_CATEGORIES).map(([key, val]) => {
-                const count = BLOG_POSTS.filter((p) => p.cat === key).length;
+                const count = posts.filter((p) => p.cat === key).length;
                 return (
                   <Link key={key} href={`/blog?cat=${key}`} data-catlink={key} className="flex items-center justify-between py-2 hover:bg-white/[0.03] transition">
                     <div className="flex items-center gap-2">

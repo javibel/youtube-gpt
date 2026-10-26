@@ -26,16 +26,16 @@ const LASTMOD: Record<string, string> = {
 const lastmod = (route: string) => new Date(LASTMOD[route] ?? REDESIGN_2026_08);
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((p) => ({
-    url: `${BASE_URL}/blog/${p.slug}`,
-    lastModified: new Date(p.date.en),
+  const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.flatMap((p) => (p.languages ?? ['es'] as const).map((lang) => ({
+    url: `${BASE_URL}${lang === 'en' ? '/en' : ''}/blog/${p.slug}`,
+    lastModified: new Date(p.languages ? p.date[lang] : p.date.en),
     changeFrequency: 'monthly' as const,
     priority: 0.7,
-  }));
+  })));
 
   // El índice del blog cambia cada vez que se publica un post → lastmod = post más reciente.
   const newestPost = BLOG_POSTS.reduce(
-    (max, p) => (new Date(p.date.en) > max ? new Date(p.date.en) : max),
+    (max, p) => (p.languages ?? ['en'] as const).reduce((latest, lang) => new Date(p.date[lang]) > latest ? new Date(p.date[lang]) : latest, max),
     new Date('2026-01-01'),
   );
 

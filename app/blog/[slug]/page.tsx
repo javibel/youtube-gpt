@@ -4,12 +4,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   BLOG_POSTS, BLOG_CATEGORIES, ARTICLE_BODIES,
-  getPost, getRelated, type Lang, type BlockType,
+  getPost, getRelated, getBlogDelivery, type Lang, type BlockType,
 } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
 import WaitlistInline from '@/components/WaitlistInline';
 import { getServerLang } from '@/lib/server-lang';
 import { BLOG_SEO } from '@/lib/blog-seo';
+import { serializePublicBlogDelivery } from '@/contracts/ai/v1/compiled-blog.cjs';
 
 export async function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -17,27 +18,28 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPost(slug);
+  const lang = getServerLang();
+  const post = getPost(slug, lang);
   if (!post) return {};
   // Meta title/description cortos para SERP (blog-seo.ts); OG/Twitter mantienen el título largo
   const seo = BLOG_SEO[slug];
   return {
-    title: seo?.title.es ?? post.title.es,
-    description: seo?.desc?.es ?? post.excerpt.es,
-    alternates: { canonical: `https://ytubviral.com/blog/${slug}` },
+    title: seo?.title[lang] ?? post.title[lang],
+    description: seo?.desc?.[lang] ?? post.excerpt[lang],
+    alternates: { canonical: `https://ytubviral.com${lang === 'en' ? '/en' : ''}/blog/${slug}` },
     openGraph: {
-      title: post.title.es,
-      description: post.excerpt.es,
-      url: `https://ytubviral.com/blog/${slug}`,
+      title: post.title[lang],
+      description: post.excerpt[lang],
+      url: `https://ytubviral.com${lang === 'en' ? '/en' : ''}/blog/${slug}`,
       type: 'article',
-      publishedTime: post.date.es,
+      publishedTime: post.languages ? post.date[lang] : post.date.en,
       authors: [post.author.name],
       ...(post.image ? { images: [{ url: `https://ytubviral.com${post.image}`, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.title.es,
-      description: post.excerpt.es,
+      title: post.title[lang],
+      description: post.excerpt[lang],
       ...(post.image ? { images: [`https://ytubviral.com${post.image}`] } : {}),
     },
   };
@@ -51,7 +53,7 @@ function RelatedCard({ post, lang, catColor, catLabel }: {
 }) {
   if (!post) return null;
   return (
-    <Link href={`/blog/${post.slug}`} className="yv-glass yv-glass--hover group block p-6 transition-colors">
+    <Link href={`${lang === 'en' ? '/en' : ''}/blog/${post.slug}`} className="yv-glass yv-glass--hover group block p-6 transition-colors">
       <div className="flex items-center gap-2 mb-3">
         <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border"
           style={{ color: catColor(post.cat), borderColor: catColor(post.cat) + '55', background: catColor(post.cat) + '11' }}>
@@ -69,13 +71,13 @@ function RelatedCard({ post, lang, catColor, catLabel }: {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = getPost(slug);
+  const lang = getServerLang();
+  const post = getPost(slug, lang);
   if (!post) notFound();
 
-  const lang = getServerLang();
-
+  const publication = getBlogDelivery(slug, lang);
   const body = ARTICLE_BODIES[slug]?.[lang] ?? null;
-  const related = getRelated(slug, post.cat, 3);
+  const related = getRelated(slug, post.cat, 3, lang);
 
   const catData = BLOG_CATEGORIES[post.cat as keyof typeof BLOG_CATEGORIES];
   const catColor = (c: string) => BLOG_CATEGORIES[c as keyof typeof BLOG_CATEGORIES]?.color ?? '#FF0033';
@@ -89,13 +91,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   };
 
   // Build Article JSON-LD for SEO
-  const dateStr = post.date.en; // "Oct 15, 2025" format
+  const dateStr = publication?.publishedAt ?? post.date.en;
   const isoDate = new Date(dateStr).toISOString().split('T')[0];
   const articleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: post.title.es,
-    description: post.excerpt.es,
+    headline: post.title[lang],
+    description: post.excerpt[lang],
     image: post.image ? `https://ytubviral.com${post.image}` : undefined,
     datePublished: isoDate,
     dateModified: isoDate,
@@ -105,7 +107,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       name: 'YTubViral',
       url: 'https://ytubviral.com',
     },
-    mainEntityOfPage: `https://ytubviral.com/blog/${slug}`,
+    mainEntityOfPage: `https://ytubviral.com${lang === 'en' ? '/en' : ''}/blog/${slug}`,
   };
 
   const breadcrumbJsonLd = {
@@ -114,19 +116,23 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ytubviral.com' },
       { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://ytubviral.com/blog' },
-      { '@type': 'ListItem', position: 3, name: post.title.es, item: `https://ytubviral.com/blog/${slug}` },
+      { '@type': 'ListItem', position: 3, name: post.title[lang], item: `https://ytubviral.com${lang === 'en' ? '/en' : ''}/blog/${slug}` },
     ],
   };
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      {publication && (
+        <script id="ytv-blog-publication" type="application/json"
+          dangerouslySetInnerHTML={{ __html: serializePublicBlogDelivery(publication) }} />
+      )}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd).replace(/</g, '\\u003c') }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c') }}
       />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>

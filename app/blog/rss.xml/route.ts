@@ -1,4 +1,4 @@
-import { BLOG_POSTS, ARTICLE_BODIES, type BlockType } from '@/lib/blog-data';
+import { getPosts, ARTICLE_BODIES, type BlockType } from '@/lib/blog-data';
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -22,14 +22,14 @@ function blocksToHtml(blocks: BlockType[]): string {
 }
 
 export async function GET() {
-  const items = BLOG_POSTS
+  const items = getPosts('en')
     .slice(0, 20)
     .map(post => {
       const body = ARTICLE_BODIES[post.slug]?.en;
       const contentHtml = body ? blocksToHtml(body) : `<p>${escapeXml(post.excerpt.en)}</p>`;
       const dateStr = post.date.en;
       const pubDate = new Date(dateStr).toUTCString();
-      const link = `https://ytubviral.com/blog/${post.slug}`;
+      const link = `https://ytubviral.com${post.languages ? '/en' : ''}/blog/${post.slug}`;
 
       return `    <item>
       <title>${escapeXml(post.title.en)}</title>
