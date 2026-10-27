@@ -3,6 +3,7 @@ import type {OperationalPostgresOptions} from '../../contracts/ai/v1/postgres-st
 export interface OperationalWebOptions extends Omit<SharedRuntimeDependencies,'readerDatabase'|'activatorDatabase'|'executorDatabase'|'storageIdentity'> {
  connections:Record<'reader'|'activator'|'executor',OperationalPostgresOptions['connect']>;
  databaseName:string;
+ operatingBudget:NonNullable<SharedRuntimeDependencies['operatingBudget']>;
 }
 export declare function createOperationalWebComposition(options:OperationalWebOptions):Readonly<{
  dependencies:SharedRuntimeDependencies;

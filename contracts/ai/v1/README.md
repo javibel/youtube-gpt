@@ -77,3 +77,18 @@ Coding results may include an optional string `answer` for explanations and diag
 RoleBoundDatabase.controlSchema selects exactly ytv_ai_test_v1 (legacy isolated default) or ytv_ai_v1. An operational capability must select the latter explicitly; SQL parameters are never rewritten. The inert control-operational.sql creates a fresh, separate schema and three roles with restricted control-schema grants, no passwords and no active configuration. Existing database-wide PUBLIC grants are not changed. It deliberately fails on existing resources instead of adopting old authority. postgres-storage.cjs requires original native connect functions, verified TLS, exact database/session roles, no memberships or elevated role flags, and preserves uncertainty after lost commit acknowledgements. This is preparation code, not production activation permission.
 
 postgres-connections.cjs owns new native pools supplied by trusted deployment code. It captures an original secret-reader function and pool constructor, fixes the role names, database target and verified TLS policy, and probes native sessions before returning connection functions. The web receives reader, activator and executor connections; the agent receives reader and executor only. Construction performs no I/O. Failed or cancelled original preparations cannot be renewed; late credentials cannot create replacement pools. Pool closure reports its native acknowledgement without recovering executions or clearing retained budgets.
+# Approved operating model pool
+
+Native operational preparation requires an explicit `OperatingBudgetPolicy` and
+one shared `ytv-operating-models:YYYY-MM` pool for every Anthropic/OpenAI task,
+across all profiles and agent exceptions. Other providers retain separately
+approved pools. No provider, model, price, credential or authorization is inferred.
+
+Preparation reads the current Madrid month, exact reviewed trigger function
+bodies, enabled trigger attachments and the native budget status through the
+original role-bound PostgreSQL connection. Missing, replaced, disabled or foreign
+period guards deny readiness. This read neither creates a budget nor activates
+configuration; original per-task authorization, reservations and dispatch checks
+remain mandatory. The approved cap is 30 USD/calendar month and 3 USD/day, with a
+24 USD observation threshold. Native admission accounts retained uncertain holds.
+

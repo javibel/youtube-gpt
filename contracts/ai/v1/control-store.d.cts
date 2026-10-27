@@ -19,6 +19,6 @@ export interface ControlStore {
   claimDispatch(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding'; dispatchDigest: string }): Promise<{ runId: string; snapshot: Readonly<Snapshot>; dispatchDigest: string; remainingDeadlineMs: number }>;
   reconcile(runId: string, outcome: { status: Status | 'uncertain'; usage?: Partial<Usage>; result?: Readonly<Result> }): Promise<{ state: 'settled' | 'uncertain'; replay?: boolean; retainedMicros?: number }>;
 }
-export declare function createControlStore(database: RoleBoundDatabase, registry: Registry): Readonly<ControlStore>;
+export declare function createControlStore(database: RoleBoundDatabase, registry: Registry, restrictions?: {validateAdmission(context:Readonly<{taskType:string;snapshot:Readonly<Snapshot>;budgetId:string;executor:'ai'|'coding'}>):true}): Readonly<ControlStore>;
 export declare function controlSchemaFor(database: Pick<RoleBoundDatabase,'controlSchema'>): ControlSchema;
 export declare function sqlForControlSchema(schema: ControlSchema, sql: string): string;

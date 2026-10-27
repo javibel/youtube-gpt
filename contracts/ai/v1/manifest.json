@@ -8,8 +8,8 @@
     "coding.cjs": "c6239a227218a35c8fa68527734df4be936f68a3726c966ae7061a0948fd2359",
     "coding.d.cts": "b9e06e02bc7effb98483b10a4c05cfc1ee0b5260071cd6154ae9438458135978",
     "coding.test.cjs": "15d7d422871fe8a96f27a2319e14043174e6a75dcc9ad0c976ac600f3158f32d",
-    "control-store.cjs": "e32853b4661f5f0129c175380a53846cf6d34a83804120f01fae28612a106a9d",
-    "control-store.d.cts": "09f910547092959168b74f304f766157400b4ef7aeb7a0a9580664b3bd5179a8",
+    "control-store.cjs": "952d3335f5d7b2b18ca72d7a7529fe36c4d4da8e639bdd04d32933c1081ba862",
+    "control-store.d.cts": "cbabe0c4ca2daa642050f24ba46b58dfe06a24ef5ad4b1a44ef31b1eabb5e25f",
     "control-test.sql": "87fc0398b4ffd3bd9253177b5a3e3f8b05a76233b298afd1cd09937e50186d5f",
     "control-operational.sql": "83c5d7005ce88988565d736e5fdf1587c44fcac6ec5ee5db28f7c7022bc8d5e5",
     "postgres-storage.cjs": "1007f7bbe7e7d2f8cdeff241b0fb453528048ebee641a273a779df87d702ad00",
@@ -28,6 +28,9 @@
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
     "compiled-blog.cjs": "5b1c6bd67747d14119dda9ecd8021b4e0b530c2489f0a339a8d1099a95e416ff",
     "compiled-blog.d.cts": "c7233b4c70f984759d152b5fcd99d68736cfcbb7344bf9ab062d6fcdbf4d239b",
-    "README.md": "f14b2803a42ee70918407b162679bff8a013814476a9fd65874c404106346579"
+    "operating-budget.cjs": "e34a5c758c6d65f71974d3f6c50c6cbf2d9b3f9e45e6e073711c2ff495a1eb1d",
+    "operating-budget.d.cts": "382ac2b58002d334c0510f2ec329688ab49b9b426d42a1275f0688a03e902023",
+    "operating-budget.test.cjs": "7ecbba050511d5d2c49b31631207a78e6aa16008c4da2ebd70c89b29b4710e29",
+    "README.md": "da67c2bdb8861497bda388cf53dccd13234b982818e47b9813a59c1b2e961d4d"
   }
 }

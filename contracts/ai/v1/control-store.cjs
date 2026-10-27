@@ -17,8 +17,11 @@ function sqlForControlSchema(schema,sql){
  return sql.replaceAll('__ytv_control__',schema);
 }
 const headLock=tx=>tx.query("SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('__ytv_control__:active'))");
-function createControlStore(database,registry){
+function createControlStore(database,registry,options={}){
  if(!['reader','activator','executor'].includes(database.role)||typeof database.transaction!=='function')fail('configuration','A role-bound database adapter is required');
+ if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).some(k=>k!=='validateAdmission')||options.validateAdmission!==undefined&&typeof options.validateAdmission!=='function')fail('configuration','Original admission restriction required');
+ const validateAdmission=options.validateAdmission;
+ const restrict=(taskType,snapshot,budgetId,executor)=>{if(validateAdmission&&validateAdmission(immutable({taskType,snapshot,budgetId,executor}))!==true)fail('permissions','Admission is outside the configured operating scope');};
  const role=database.role,controlSchema=controlSchemaFor(database),originalTransaction=database.transaction.bind(database);
  database=Object.freeze({role,controlSchema,transaction:work=>originalTransaction(tx=>work(Object.freeze({query:(sql,args)=>tx.query(sqlForControlSchema(controlSchema,sql),args)})))});
  const requireRole=expected=>{if(role!==expected)fail('permissions','Operation not granted to this runtime role');};
@@ -101,12 +104,16 @@ function createControlStore(database,registry){
     const existing=matches[0];
     if(existing){
      if(existing.request_fingerprint!==fingerprint)fail('invalid_format','Idempotency identity reused for different input or principal');
+     restrict(request.taskType,existing.snapshot,budgetId,executor);
      const saved=(await tx.query('SELECT o.payload,r.state FROM __ytv_control__.results o JOIN __ytv_control__.reservations r ON r.run_id=o.run_id WHERE o.run_id=$1',[existing.run_id]))[0];
      return {runId:existing.run_id,snapshot:immutable(existing.snapshot),status:existing.status,replay:true,...(saved?{result:immutable(saved.payload),accounting:{state:saved.state,replay:true}}:{})};
     }
     const cfg=(await tx.query('SELECT r.payload FROM __ytv_control__.active_revision a JOIN __ytv_control__.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload;
     if(!cfg)fail('configuration','No active configuration');
     const snapshot=registry.resolve(cfg,request,{agentId,executor});
+    // Narrow the selected snapshot while holding the original head lock and
+    // before any reservation. A later profile change cannot bypass the pool.
+    restrict(request.taskType,snapshot,budgetId,executor);
     const budget=(await tx.query('SELECT currency FROM __ytv_control__.budgets WHERE budget_id=$1',[budgetId]))[0];
     if(!budget||budget.currency!==request.budget.currency)fail('configuration','Budget group or currency mismatch');
     const reserved=await tx.query('UPDATE __ytv_control__.budgets SET reserved_micros=reserved_micros+$2 WHERE budget_id=$1 AND NOT blocked AND reserved_micros+settled_micros+$2<=limit_micros RETURNING budget_id',[budgetId,request.budget.maxCostMicros]);
@@ -165,6 +172,7 @@ function createControlStore(database,registry){
     if(!reservation||reservation.budget_id!==budgetId||reservation.state!=='reserved')fail('permissions','Active reservation required');
     const run=(await tx.query("SELECT *,floor(extract(epoch FROM (created_at + ($2 * interval '1 millisecond') - clock_timestamp())) * 1000)::double precision AS remaining_ms FROM __ytv_control__.runs WHERE run_id=$1 FOR UPDATE",[runId,request.budget.deadlineMs]))[0];
     if(!run||run.request_id!==requestId||run.request_fingerprint!==fingerprint||run.status!=='running')fail('permissions','Dispatch differs from admitted execution');
+    restrict(request.taskType,run.snapshot,budgetId,executor);
     if(run.dispatch_digest!==null)fail('uncertain','Dispatch already claimed; reconcile instead of retrying');
     if(run.remaining_ms<=0)fail('deadline','Admitted execution deadline elapsed');
     const budget=(await tx.query('SELECT blocked FROM __ytv_control__.budgets WHERE budget_id=$1 FOR UPDATE',[budgetId]))[0];
