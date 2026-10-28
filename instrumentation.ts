@@ -7,20 +7,29 @@
  * silently break OAuth flows, API keys, URLs, etc.
  */
 export async function register() {
+  // Select using normalized metadata without changing any secret bytes. A
+  // mixed startup must fail before trimming or constructing either runtime.
+  const nodeRuntime = process.env.NEXT_RUNTIME?.trim() === 'nodejs';
+  const fixtureRequested = process.env.YTV_MIGRATION_WEB_TEST?.trim() === '1';
+  const operationalRequested = process.env.YTV_OPERATIONAL_RUNTIME?.trim() === '1';
+  if (nodeRuntime && fixtureRequested && operationalRequested) {
+    throw new Error('Fixture and operational startup cannot share a process');
+  }
+  if (nodeRuntime && operationalRequested) {
+    const { prepareConfiguredPlatformWebHost } = await import('./lib/ai/platform-web-host');
+    await prepareConfiguredPlatformWebHost();
+  }
   for (const key of Object.keys(process.env)) {
     const val = process.env[key];
     if (val && val !== val.trim()) {
       process.env[key] = val.trim();
     }
   }
-  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_MIGRATION_WEB_TEST === '1' && process.env.YTV_OPERATIONAL_RUNTIME === '1') {
-    throw new Error('Fixture and operational startup cannot share a process');
-  }
-  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_MIGRATION_WEB_TEST === '1') {
+  if (nodeRuntime && fixtureRequested) {
     const { installLocalFixture } = await import('./lib/migration/local-fixture-runtime');
     await installLocalFixture();
   }
-  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_OPERATIONAL_RUNTIME === '1') {
+  if (nodeRuntime && operationalRequested) {
     const { installConfiguredOperationalWebRuntime } = await import('./lib/ai/operational-runtime');
     await installConfiguredOperationalWebRuntime();
   }

@@ -9,6 +9,12 @@ type Deployment=ReturnType<typeof createOperationalWebDeployment>;
 type Provided={options:OperationalWebOptions|Deployment;signal?:AbortSignal;install:()=>Promise<Readonly<SharedRuntimeReadiness>>};
 const server=globalThis as typeof globalThis & {[key]?:Readonly<Provided>};
 
+// A native preprovided owner keeps the original installation path. Metadata
+// without its original installation function cannot satisfy this query.
+export function hasOriginalOperationalWebCapabilities():boolean{
+ return typeof server[key]?.install==='function';
+}
+
 // Called by the original trusted deployment bootstrap before instrumentation.
 // Environment variables/JSON can request startup but cannot supply functions.
 export function provideOperationalWebCapabilities(options:OperationalWebOptions,{signal}:{signal?:AbortSignal}={}):void{

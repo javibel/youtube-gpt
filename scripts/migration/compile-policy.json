@@ -1,7 +1,7 @@
 {
   "nextVersion": "16.3.6",
   "files": {
-    "instrumentation.ts": "74eaa2889b68a25818d5b31a0e00fdfe31676f72141ecf05551ca21802e2a565",
+    "instrumentation.ts": "be42df13fb55bd1d65cce4d6a6605827e8d289d86618cf871340e424dbabbb4d",
     "postcss.config.mjs": "7b299d3d3b16699ddda397c0b2373b3af4f25f8fc9ccc9b3d9e64ef083bc1c21",
     "next.config.ts": "32d056f01c7b7ba1ccee0393aa37b592c0b50bcf8108ab610a2dc1523863b727",
     "node_modules/next/dist/build/index.js": "00dfe2e8887f882868b2e55f2ce194243e8fec83029df6036ff4e4864aa36101",
