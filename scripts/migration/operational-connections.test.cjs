@@ -2,7 +2,17 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {createRoleConnectionOwner}=require('../../contracts/ai/v1/postgres-connections.cjs');
-const results=[],test=async(name,fn)=>{try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}};
+const args=process.argv.slice(2);
+if(args.length>1||(args.length===1&&args[0]!=='--only-failed-reentry'))throw Error('Only --only-failed-reentry or no arguments is supported');
+const onlyFailedReentry=args.length===1,failedReentryNames=Object.freeze([
+ 'synchronous abort reentry retains exact close and retirement promises and the first deadline',
+ 'retirement before close never renews the elapsed original budget',
+ 'reentrant retirement within the first budget still closes the owned pools once',
+ 'late provider settlement or rejection cannot upgrade an uncertain reentrant close',
+ 'platform cancellation observes late original preparation and ingress without closing pools',
+ 'late pool closure cannot replace the original terminal after the remaining deadline expires'
+]);
+const results=[],retainedValidGroups=[],test=async(name,fn)=>{if(onlyFailedReentry&&!failedReentryNames.includes(name)){retainedValidGroups.push(name);return;}try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function retirementHarness({platform=false,providers=true,providerGate,ingressGate,poolGate,prepareGate}={}){
@@ -14,7 +24,7 @@ function retirementHarness({platform=false,providers=true,providerGate,ingressGa
  const nativeProviders={adapters:[],checkCredential:async()=>assert.fail('No credential access'),stop:()=>{state.providerStops++;state.onProviderStop?.();return providerGate?providerGate.promise:Promise.resolve({drained:true,uncertain:false});}};
  function load(name,mocks){const module={exports:{}},file=path.resolve(__dirname,'../../lib/ai',name);vm.runInNewContext(fs.readFileSync(file,'utf8'),{module,require:id=>{if(Object.hasOwn(mocks,id))return mocks[id];if(id==='node:perf_hooks')return{performance:{now:()=>state.clock}};throw Error('Unexpected retirement import '+id);},AbortController,AbortSignal,structuredClone,setTimeout:(fn,ms,...args)=>{state.timerDelays.push(ms);return setTimeout(fn,ms,...args);},clearTimeout},{filename:file});return module.exports;}
  const operational=load('operational-deployment.cjs',{'../../contracts/ai/v1/postgres-connections.cjs':{createRoleConnectionOwner:()=>connectionOwner},'./operational-composition.cjs':{createOperationalWebComposition:()=>({dependencies,prepare:async()=>prepared})},'./adapters/native-provider-owner.cjs':{createNativeWebProviderOwner:()=>nativeProviders}});
- const runtime={taskCatalog:{},policies:{},budgetBindings:{},authorize:async()=>assert.fail('No task grant'),...(providers?{nativeProviders:{stopTimeoutMs:30}}:{adapters:[],checkCredential:async()=>false})};
+ const runtime={taskCatalog:{},policies:{},budgetBindings:{},operatingBudget:{budgetId:'ytv-operating-models:2026-10',currency:'USD',monthlyLimitMicros:30000000,dailyLimitMicros:3000000,alertAtMonthlyMicros:24000000,timezone:'Europe/Madrid'},authorize:async()=>assert.fail('No task grant'),...(providers?{nativeProviders:{stopTimeoutMs:30}}:{adapters:[],checkCredential:async()=>false})};
  let owner;
  if(platform){const entry=load('platform-web-deployment.cjs',{'./operational-deployment.cjs':operational,'node:process':{release:{name:'node'},env:{NEXT_RUNTIME:'nodejs',YTV_AI_READER_PASSWORD:'synthetic-reader',YTV_AI_ACTIVATOR_PASSWORD:'synthetic-activator',YTV_AI_EXECUTOR_PASSWORD:'synthetic-executor'}}});owner=entry.createPlatformWebDeployment({database:{host:'synthetic.invalid',port:5432,databaseName:'synthetic-only',timeoutMs:1000,maxConnections:1},runtime,authorizeRoleAccess:async()=>true,sealAndDrainIngress:()=>{state.ingressCalls++;return ingressGate?ingressGate.promise:Promise.resolve({drained:true});},prepareTimeoutMs:1000,stopTimeoutMs:30});}
  else owner=operational.createOperationalWebDeployment({database:{databaseName:'synthetic-only',timeoutMs:1000,getPassword:async()=>assert.fail('No credential access')},runtime});
@@ -61,5 +71,6 @@ function harness(surface='web'){
  await test('native deployment without providers preserves one reentrant original pool close',async()=>{
   const h=retirementHarness({providers:false});await h.owner.prepare();let nested;h.state.onAbort=()=>{nested=h.owner.close();};const close=h.owner.close();assert.equal(close,nested);assert.equal((await close).closed,true);assert.equal(h.state.poolCloses,1);assert.equal(h.state.providerStops,0);
  });
- console.log(JSON.stringify({scope:'Fresh role connections and original web deployment retirement; synthetic boundaries only',results},null,2));if(results.some(result=>result.status==='FAIL'))process.exitCode=1;
+ if(onlyFailedReentry){assert.deepEqual(results.map(row=>row.name),failedReentryNames);assert.equal(retainedValidGroups.length,7);}else assert.equal(results.length,13);
+ console.log(JSON.stringify({scope:'Fresh role connections and original web deployment retirement; synthetic boundaries only',selection:onlyFailedReentry?'only-failed-reentry':'whole-program',selectedGroupNames:results.map(row=>row.name),retainedValidGroups,notWholeProgramRun:onlyFailedReentry,retainedGroupsExecuted:false,results},null,2));if(results.some(result=>result.status==='FAIL'))process.exitCode=1;
 })().catch(error=>{console.error(error);process.exitCode=1;});
