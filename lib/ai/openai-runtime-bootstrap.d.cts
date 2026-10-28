@@ -1,5 +1,6 @@
 import type { ControlSchema } from '../../contracts/ai/v1/control-store.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
+import type { ModelMetadataChecker, ModelMetadataObservation } from './model-metadata-readiness.cjs';
 export interface OpenAIRuntimeDependencies {
   database: { role: 'executor'; controlSchema?: ControlSchema; transaction: <T>(fn: (tx: { query: (sql: string, args: unknown[]) => Promise<unknown[]> }) => Promise<T>) => Promise<T> };
   resolveAddress: (context: { hostname: string; signal: AbortSignal }) => Promise<string>;
@@ -16,7 +17,8 @@ export interface OpenAIRuntimeDependencies {
   pricing: { version: string; currency: string };
   budgetBindings: Record<string, string[]>;
   checkCredential: (context: { runtimeId: 'web'; providerId: string; credentialRef: string; signal: AbortSignal }) => Promise<boolean>;
+  checkModelAvailability: ModelMetadataChecker;
   timeoutMs: number;
 }
-export interface OpenAIRuntimeReadiness { runtimeId: 'web'; providerId: string; adapterVersion: string; configRevision: string; activeProfile: string; priceVersion: string; currency: string; taskTypes: readonly string[]; assignments: readonly Readonly<{ profile: string; taskType: string; agentId: string | null; model: string }>[] }
+export interface OpenAIRuntimeReadiness { runtimeId: 'web'; providerId: string; adapterVersion: string; configRevision: string; activeProfile: string; priceVersion: string; currency: string; taskTypes: readonly string[]; assignments: readonly Readonly<{ profile: string; taskType: string; agentId: string | null; model: string }>[]; modelMetadata: readonly Readonly<ModelMetadataObservation>[] }
 export declare function createOpenAIRuntimeBootstrap(dependencies: OpenAIRuntimeDependencies): Readonly<{ prepare(options?: { signal?: AbortSignal }): Promise<Readonly<{ factory: (identity: TaskIdentity) => Promise<MessagesTask>; readiness: Readonly<OpenAIRuntimeReadiness> }>> }>;
