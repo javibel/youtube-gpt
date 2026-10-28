@@ -5,8 +5,9 @@ const {harness:sharedHarness,loadBootstrap}=require('./shared-runtime.test.cjs')
 const {createConfigurationService}=require('../../lib/ai/configuration-service.cjs');
 const root=path.resolve(__dirname,'../..'),results=[],deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};},flush=()=>new Promise(r=>setImmediate(r));let finished=false;
 process.once('beforeExit',()=>{if(!finished){console.log(JSON.stringify({complete:false,scope:'Incomplete original metadata execution',results}));process.exitCode=1;}});
-const test=async(name,fn)=>{try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}};
-function load(file,overrides={}){const filename=path.join(root,file),native=createRequire(filename),module={exports:{}};vm.runInNewContext(fs.readFileSync(filename,'utf8'),{module,require:id=>Object.hasOwn(overrides,id)?overrides[id]:native(id),Buffer,AbortSignal,AbortController,structuredClone,Headers,ReadableStream,Promise},{filename});return module.exports;}
+const selected=process.argv.slice(2);if(selected.some(x=>x!=='--retry-owner'))throw Error('Unknown directed metadata group');
+const test=async(name,fn)=>{if(selected.length&&name.startsWith('metadata-only wire rejects'))return;try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}};
+function load(file,overrides={}){const filename=path.join(root,file),native=createRequire(filename),module={exports:{}};vm.runInNewContext(fs.readFileSync(filename,'utf8'),{module,require:id=>Object.hasOwn(overrides,id)?overrides[id]:native(id),Buffer,AbortSignal,AbortController,structuredClone,Headers,ReadableStream,Promise,setTimeout,clearTimeout},{filename});return module.exports;}
 function fixture(){
  const state={requests:[],events:[],reads:0,authorizations:[],resolutions:[],allow:true,status:200,holdClose:false},entered=deferred();
  const native={Agent:class{constructor(options){assert.equal(Object.keys(options.proxyEnv).length,0);this.socket=null;}destroy(){if(this.socket&&!state.holdClose)this.socket.emit('close');}createConnection(){return this.socket;}},request(options,callback){
