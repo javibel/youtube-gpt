@@ -8,6 +8,7 @@ export interface AdministrativeConfigurationDependencies {
  taskCatalog: ConfigurationDependencies['taskCatalog'];
  getRuntimes: ConfigurationDependencies['getRuntimes'];
  checkCredential: (context:{runtimeId:string;credentialRef:string;providerId:string;signal?:AbortSignal})=>Promise<boolean>;
+ checkModelAvailability: ConfigurationDependencies['checkModelAvailability'];
  timeoutMs: number;
 }
 export interface AdministrativeConfigurationReadiness {

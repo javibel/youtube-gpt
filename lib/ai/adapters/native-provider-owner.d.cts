@@ -15,6 +15,7 @@ export interface NativeWebProviderConfiguration {
  models:Provider['models'];
  credentialRef:string;
  readCredential(context:Readonly<NativeWebCredentialContext>):Promise<string>|string;
+ authorizeMetadataRead?(context:Readonly<NativeWebCredentialContext & {model:string;account:Readonly<Record<string,string|null>>}>):Promise<boolean>|boolean;
  resolveAddress(context:Readonly<{hostname:string;signal:AbortSignal}>):Promise<string>|string;
  preflight(context:Readonly<{payload:Record<string,unknown>;request:Readonly<AiRequest>;snapshot:Readonly<Snapshot>;signal:AbortSignal}>):Promise<NativeWebPriceQuote>|NativeWebPriceQuote;
  priceUsage(context:Readonly<{usage:Partial<Usage>;snapshot:Readonly<Snapshot>;quote:NativeWebPriceQuote;signal:AbortSignal}>):Promise<{costMicros:number;currency:string;priceVersion:string;estimated:boolean}|null>|{costMicros:number;currency:string;priceVersion:string;estimated:boolean}|null;
@@ -45,5 +46,6 @@ export interface NativeWebProviderStop {
 export declare function createNativeWebProviderOwner(options:NativeWebProviderOwnerOptions):Readonly<{
  adapters:readonly Readonly<Provider>[];
  checkCredential(context:Readonly<{runtimeId:'web';providerId:string;credentialRef:string;signal?:AbortSignal}>):Promise<boolean>;
+ checkModelAvailability(context:Readonly<{runtimeId:'web';providerId:string;credentialRef:string;model:string;signal?:AbortSignal}>):Promise<Readonly<import('../model-metadata-readiness.cjs').ModelMetadataObservation>>;
  stop():Promise<Readonly<NativeWebProviderStop>>;
 }>;

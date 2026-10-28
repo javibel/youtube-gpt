@@ -15,6 +15,7 @@ export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurat
 }
 export interface SharedRuntimeReadiness extends AdministrativeConfigurationReadiness {
  executorRole:string; budgetIds:readonly string[]; providerIds:readonly string[];
+ modelMetadata:readonly import('./model-metadata-readiness.cjs').ModelMetadataObservation[];
  operatingBudget?: Readonly<OperatingBudgetPolicy & {taskTypes:readonly string[];guardsVerified:true;nativeMonth:string}>;
 }
 export declare function createSharedRuntimeBootstrap(options:SharedRuntimeDependencies):Readonly<{

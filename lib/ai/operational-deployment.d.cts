@@ -4,7 +4,7 @@ import type {NativeWebProviderOptions} from './adapters/native-provider-owner.cj
 type RuntimeBase=Omit<OperationalWebOptions,'connections'|'databaseName'|'timeoutMs'>;
 export type OperationalWebDeploymentRuntime=
  | (RuntimeBase&{nativeProviders?:never})
- | (Omit<RuntimeBase,'adapters'|'checkCredential'>&{nativeProviders:NativeWebProviderOptions;adapters?:never;checkCredential?:never});
+ | (Omit<RuntimeBase,'adapters'|'checkCredential'|'checkModelAvailability'>&{nativeProviders:NativeWebProviderOptions;adapters?:never;checkCredential?:never;checkModelAvailability?:never});
 export interface OperationalWebDeploymentOptions {
  database:Omit<RoleConnectionOwnerOptions,'surface'|'createPool'>;
  runtime:OperationalWebDeploymentRuntime;

@@ -8,6 +8,7 @@ export interface ConfigurationDependencies {
   getActor: (action: string) => Promise<string | null>;
   getRuntimes: () => Promise<{ id: string; contractVersions: string[]; adapters: Record<string, string> }[]>;
   checkCredential: (context: { runtimeId: string; credentialRef: string; providerId: string }) => Promise<boolean>;
+  checkModelAvailability: import('./model-metadata-readiness.cjs').ModelMetadataChecker;
   clock?: () => number;
   previewTtlMs?: number;
 }
