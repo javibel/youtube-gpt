@@ -1,4 +1,4 @@
-import type {AiRequest,Provider,Snapshot,Usage} from '../../contracts/ai/v1/core.cjs';
+import type {AiRequest,Provider,Snapshot,Usage} from '../../../contracts/ai/v1/core.cjs';
 
 export interface NativeWebCredentialContext {
  readonly runtimeId:'web';

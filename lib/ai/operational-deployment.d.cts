@@ -1,6 +1,6 @@
 import type {RoleConnectionOwnerOptions} from '../../contracts/ai/v1/postgres-connections.cjs';
 import type {OperationalWebOptions} from './operational-composition.cjs';
-import type {NativeWebProviderOptions} from './native-provider-owner.cjs';
+import type {NativeWebProviderOptions} from './adapters/native-provider-owner.cjs';
 type RuntimeBase=Omit<OperationalWebOptions,'connections'|'databaseName'|'timeoutMs'>;
 export type OperationalWebDeploymentRuntime=
  | (RuntimeBase&{nativeProviders?:never})
