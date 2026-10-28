@@ -4,16 +4,9 @@ import {createNativePlatformBindings,type NativePlatformBindingsOptions,type Nat
 import {providePlatformWebDeployment} from './platform-web-bootstrap';
 import type {PlatformWebDeploymentOptions} from './platform-web-deployment.cjs';
 import {hasOriginalOperationalWebCapabilities} from './operational-runtime';
+import {registerOriginalPlatformWebHostFactory,getOriginalPlatformWebHostFactory,beginOriginalPlatformWebHostPreparation,type OriginalPlatformWebHostFactory,type OriginalPlatformWebHostOptions,type OriginalPlatformWebHostRegistration} from './platform-web-host-registration.cjs';
 
-export type OriginalPlatformWebHostFactory=(context:Readonly<{
- signal:AbortSignal;
- createNativePlatformBindings:(options:NativePlatformBindingsOptions)=>Readonly<NativePlatformBindings>;
-}>)=>PlatformWebDeploymentOptions|Promise<PlatformWebDeploymentOptions>;
-export interface OriginalPlatformWebHostOptions {
- signal?:AbortSignal;
- prepareTimeoutMs:number;
- stopTimeoutMs:number;
-}
+export type {OriginalPlatformWebHostFactory,OriginalPlatformWebHostOptions} from './platform-web-host-registration.cjs';
 export interface PlatformWebHostStop {
  readonly drained:boolean;
  readonly uncertain:boolean;
@@ -50,20 +43,30 @@ const failure=()=>new Error('Original platform web host preparation was not conf
 // environment value, serialized factory or module path can supply authority.
 // Registration is inert: no secret read, DNS, pool or provider dispatch occurs.
 export function provideOriginalPlatformWebHost(factory:OriginalPlatformWebHostFactory,options:OriginalPlatformWebHostOptions):Readonly<OriginalPlatformWebHost>{
- if(typeof factory!=='function'||!options||typeof options!=='object'||Array.isArray(options)
-  ||Reflect.ownKeys(options).some(name=>!['signal','prepareTimeoutMs','stopTimeoutMs'].includes(name as string))
-  ||!Object.hasOwn(options,'prepareTimeoutMs')||!Object.hasOwn(options,'stopTimeoutMs')
-  ||Object.values(Object.getOwnPropertyDescriptors(options)).some(descriptor=>!Object.hasOwn(descriptor,'value'))
-  ||!Number.isSafeInteger(options.prepareTimeoutMs)||options.prepareTimeoutMs<1||options.prepareTimeoutMs>300000
-  ||!Number.isSafeInteger(options.stopTimeoutMs)||options.stopTimeoutMs<1||options.stopTimeoutMs>30000
-  ||options.signal!==undefined&&!(options.signal instanceof AbortSignal))throw failure();
- const signal=options.signal,prepareTimeoutMs=options.prepareTimeoutMs,stopTimeoutMs=options.stopTimeoutMs;
+ if(typeof factory!=='function'||!options||typeof options!=='object'||Array.isArray(options))throw failure();
+ const descriptors=Object.getOwnPropertyDescriptors(options),names=Reflect.ownKeys(descriptors);
+ if(names.some(name=>!['signal','prepareTimeoutMs','stopTimeoutMs'].includes(name as string))
+  ||!Object.hasOwn(descriptors,'prepareTimeoutMs')||!Object.hasOwn(descriptors,'stopTimeoutMs')
+  ||names.some(name=>!Object.hasOwn(descriptors[name as string],'value')))throw failure();
+ const signal=descriptors.signal?.value as AbortSignal|undefined,prepareTimeoutMs=descriptors.prepareTimeoutMs.value as number,stopTimeoutMs=descriptors.stopTimeoutMs.value as number;
  const previous=server[key];
  if(previous){
   if(previous.factory!==factory||previous.signal!==signal||previous.prepareTimeoutMs!==prepareTimeoutMs||previous.stopTimeoutMs!==stopTimeoutMs)throw new Error('Platform web host already has original capabilities');
   return previous.handle;
  }
  if(server[preparationKey])throw new Error('Platform web host preparation already has an original result');
+ registerOriginalPlatformWebHostFactory(factory,{signal,prepareTimeoutMs,stopTimeoutMs});
+ const original=getOriginalPlatformWebHostFactory();if(!original)throw failure();
+ return createRegisteredPlatformWebHost(original).handle;
+}
+
+function createRegisteredPlatformWebHost(original:Readonly<OriginalPlatformWebHostRegistration>):Registration{
+ const {factory,signal,prepareTimeoutMs,stopTimeoutMs}=original;
+ const previous=server[key];
+ if(previous){
+  if(previous.factory!==factory||previous.signal!==signal||previous.prepareTimeoutMs!==prepareTimeoutMs||previous.stopTimeoutMs!==stopTimeoutMs)throw new Error('Platform web host already has original capabilities');
+  return previous;
+ }
  if(signal?.aborted)throw failure();
  const shutdown=new AbortController(),ownedSignal=signal?AbortSignal.any([signal,shutdown.signal]):shutdown.signal;
  const bindings=new Map<BindingOwner,BindingOwner['stop']>(),bindingStops=new Map<BindingOwner,Promise<BindingStop>>();
@@ -153,8 +156,9 @@ export function provideOriginalPlatformWebHost(factory:OriginalPlatformWebHostFa
   void preparation.catch(()=>{void retire().catch(()=>{});});return preparation;
  };
  const handle=Object.freeze({prepare:prepareConfiguredPlatformWebHost,retire});
- Object.defineProperty(server,key,{value:Object.freeze({factory,signal,prepareTimeoutMs,stopTimeoutMs,handle,prepareOriginal}),writable:false,configurable:false});
- return handle;
+ const registration=Object.freeze({factory,signal,prepareTimeoutMs,stopTimeoutMs,handle,prepareOriginal});
+ Object.defineProperty(server,key,{value:registration,writable:false,configurable:false});
+ return registration;
 }
 
 // Instrumentation calls this executable entry. The value import above keeps the
@@ -162,17 +166,31 @@ export function provideOriginalPlatformWebHost(factory:OriginalPlatformWebHostFa
 // An already supplied original runtime retains its existing installation path.
 export function prepareConfiguredPlatformWebHost():Promise<void>{
  const previous=server[preparationKey];if(previous)return previous.promise;
- const registration=server[key];
+ const original=beginOriginalPlatformWebHostPreparation();
+ let registration=server[key];
+ let constructionFailed=false,constructionError:unknown;
  const promise=Promise.resolve().then(()=>{
+  if(constructionFailed)throw constructionError;
   if(hasOriginalOperationalWebCapabilities())return;
   if(!registration)throw new Error('Original platform web host factory required');
   return registration.prepareOriginal();
  });
  Object.defineProperty(server,preparationKey,{value:Object.freeze({promise}),writable:false,configurable:false});
+ // Resolve the inert owner synchronously after fixing the original promise.
+ // A caller can retire immediately on return, before any factory microtask.
+ try{if(!registration&&original&&!hasOriginalOperationalWebCapabilities())registration=createRegisteredPlatformWebHost(original);}
+ catch(error){constructionFailed=true;constructionError=error;}
  void promise.catch(()=>{void registration?.handle.retire().catch(()=>{});});return promise;
 }
 
 export function retireConfiguredPlatformWebHost():Promise<Readonly<PlatformWebHostStop>>{
- const registration=server[key];if(!registration)throw new Error('Original platform web host factory required');
+ let registration=server[key];
+ if(!registration){
+  const original=beginOriginalPlatformWebHostPreparation();
+  if(!original)throw new Error('Original platform web host factory required');
+  // No factory/secret preparation occurs. Resolve only this registered host's
+  // inert owner, so retirement before preparation seals the same original.
+  registration=createRegisteredPlatformWebHost(original);
+ }
  return registration.handle.retire();
 }
