@@ -1,8 +1,25 @@
 'use strict';
 const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {createRoleConnectionOwner}=require('../../contracts/ai/v1/postgres-connections.cjs');
 const results=[],test=async(name,fn)=>{try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}};
-const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};};
+const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+function retirementHarness({platform=false,providers=true,providerGate,ingressGate,poolGate,prepareGate}={}){
+ const state={clock:0,providerStops:0,poolCloses:0,ingressCalls:0,abortCalls:0,timerDelays:[],signal:null};
+ const database=Object.freeze({transaction:async()=>assert.fail('No SQL in retirement tests')});
+ const dependencies={readerDatabase:database,activatorDatabase:database,executorDatabase:database};
+ const prepared={factory:async()=>assert.fail('No inference in retirement tests'),configurationDependencies:{reader:{},activator:{}}};
+ const connectionOwner={prepare:async({signal})=>{state.signal=signal;signal.addEventListener('abort',()=>{state.abortCalls++;state.onAbort?.();},{once:true});if(prepareGate)await prepareGate.promise;return{connections:{reader:async()=>assert.fail('No reader SQL'),activator:async()=>assert.fail('No activator SQL'),executor:async()=>assert.fail('No executor SQL')}};},close:()=>{state.poolCloses++;state.onPoolClose?.();return poolGate?poolGate.promise:Promise.resolve({closed:true,poolCount:3});}};
+ const nativeProviders={adapters:[],checkCredential:async()=>assert.fail('No credential access'),stop:()=>{state.providerStops++;state.onProviderStop?.();return providerGate?providerGate.promise:Promise.resolve({drained:true,uncertain:false});}};
+ function load(name,mocks){const module={exports:{}},file=path.resolve(__dirname,'../../lib/ai',name);vm.runInNewContext(fs.readFileSync(file,'utf8'),{module,require:id=>{if(Object.hasOwn(mocks,id))return mocks[id];if(id==='node:perf_hooks')return{performance:{now:()=>state.clock}};throw Error('Unexpected retirement import '+id);},AbortController,AbortSignal,structuredClone,setTimeout:(fn,ms,...args)=>{state.timerDelays.push(ms);return setTimeout(fn,ms,...args);},clearTimeout},{filename:file});return module.exports;}
+ const operational=load('operational-deployment.cjs',{'../../contracts/ai/v1/postgres-connections.cjs':{createRoleConnectionOwner:()=>connectionOwner},'./operational-composition.cjs':{createOperationalWebComposition:()=>({dependencies,prepare:async()=>prepared})},'./adapters/native-provider-owner.cjs':{createNativeWebProviderOwner:()=>nativeProviders}});
+ const runtime={taskCatalog:{},policies:{},budgetBindings:{},authorize:async()=>assert.fail('No task grant'),...(providers?{nativeProviders:{stopTimeoutMs:30}}:{adapters:[],checkCredential:async()=>false})};
+ let owner;
+ if(platform){const entry=load('platform-web-deployment.cjs',{'./operational-deployment.cjs':operational,'node:process':{release:{name:'node'},env:{NEXT_RUNTIME:'nodejs',YTV_AI_READER_PASSWORD:'synthetic-reader',YTV_AI_ACTIVATOR_PASSWORD:'synthetic-activator',YTV_AI_EXECUTOR_PASSWORD:'synthetic-executor'}}});owner=entry.createPlatformWebDeployment({database:{host:'synthetic.invalid',port:5432,databaseName:'synthetic-only',timeoutMs:1000,maxConnections:1},runtime,authorizeRoleAccess:async()=>true,sealAndDrainIngress:()=>{state.ingressCalls++;return ingressGate?ingressGate.promise:Promise.resolve({drained:true});},prepareTimeoutMs:1000,stopTimeoutMs:30});}
+ else owner=operational.createOperationalWebDeployment({database:{databaseName:'synthetic-only',timeoutMs:1000,getPassword:async()=>assert.fail('No credential access')},runtime});
+ return{owner,state};
+}
 function harness(surface='web'){
  const state={secrets:[],pools:[],ended:[],releases:[],queries:[]};
  const options={surface,host:'candidate.example.invalid',port:5432,databaseName:'candidate',timeoutMs:1000,maxConnections:1,getPassword:async({role})=>{state.secrets.push(role);return'closed-synthetic-password';},createPool:options=>{
@@ -18,5 +35,31 @@ function harness(surface='web'){
  await test('late secrets after the original deadline cannot construct pools or renew a failed preparation',async()=>{const h=harness(),gate=deferred();h.options.timeoutMs=20;h.options.getPassword=()=>gate.promise;const owner=createRoleConnectionOwner(h.options),p=owner.prepare();await assert.rejects(p,error=>error.code==='deadline');assert.equal(owner.prepare(),p);gate.resolve('closed-late-secret');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.state.pools.length,0);assert.equal((await owner.close()).closed,true);});
  await test('a preparation cannot replace its original cancellation waiter or survive retirement',async()=>{const h=harness(),gate=deferred();h.options.getPassword=()=>gate.promise;const owner=createRoleConnectionOwner(h.options),one=new AbortController(),p=owner.prepare({signal:one.signal});void p.catch(()=>{});assert.throws(()=>owner.prepare({signal:new AbortController().signal}),error=>error.code==='permissions');one.abort();await assert.rejects(p,error=>error.code==='cancelled');gate.resolve('closed-late-secret');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.state.pools.length,0);});
  await test('native pool closure failure remains unconfirmed and is never retried as a replacement owner',async()=>{const h=harness(),create=h.options.createPool;let stops=0;h.options.createPool=options=>{const pool=create(options);pool.end=async()=>{stops++;throw Error('Native close unconfirmed');};return pool;};const owner=createRoleConnectionOwner(h.options);await owner.prepare();const p=owner.close();assert.equal(owner.close(),p);assert.equal((await p).closed,false);assert.equal(stops,3);});
- console.log(JSON.stringify({scope:'Fresh native role connection owner lifecycle; closed secret reader and native-shaped clients',results},null,2));if(results.some(result=>result.status==='FAIL'))process.exitCode=1;
+ await test('synchronous abort reentry retains exact close and retirement promises and the first deadline',async()=>{
+  for(const platform of [false,true])for(const first of ['close','retire']){
+   const h=retirementHarness({platform});await h.owner.prepare();let nestedClose,nestedRetire;
+   h.state.onAbort=()=>{h.state.clock=31;nestedRetire=h.owner.retire();nestedClose=h.owner.close();};
+   const original=h.owner[first]();assert.equal(original,first==='close'?nestedClose:nestedRetire);assert.equal(h.owner.close(),nestedClose);assert.equal(h.owner.retire(),nestedRetire);
+   const terminal=await nestedClose;assert.equal(terminal.drained,false);assert.equal(terminal.uncertain,true);assert.equal(terminal.poolsClosed,false);assert.equal(h.state.poolCloses,0);assert.equal(h.state.providerStops,1);assert.equal(h.state.abortCalls,1);assert.equal(await h.owner.close(),terminal);assert.throws(()=>h.owner.assertOpen());
+  }
+ });
+ await test('retirement before close never renews the elapsed original budget',async()=>{
+  for(const platform of [false,true]){const h=retirementHarness({platform});await h.owner.prepare();const retirement=h.owner.retire();assert.equal(h.owner.retire(),retirement);assert.equal((await retirement).drained,true);h.state.clock=31;const close=h.owner.close(),terminal=await close;assert.equal(h.owner.close(),close);assert.equal(terminal.drained,false);assert.equal(terminal.poolsClosed,false);assert.equal(h.state.poolCloses,0);assert.equal(h.state.providerStops,1);}
+ });
+ await test('reentrant retirement within the first budget still closes the owned pools once',async()=>{
+  for(const platform of [false,true]){const h=retirementHarness({platform});await h.owner.prepare();let nestedClose,nestedRetire;h.state.onAbort=()=>{nestedClose=h.owner.close();nestedRetire=h.owner.retire();};const close=h.owner.close();assert.equal(close,nestedClose);assert.equal(h.owner.retire(),nestedRetire);const terminal=await close;assert.equal(terminal.drained,true);assert.equal(terminal.closed,true);assert.equal(terminal.poolsClosed,true);assert.equal(terminal.poolCount,3);assert.equal(h.state.poolCloses,1);assert.equal(h.state.providerStops,1);assert.equal(h.state.ingressCalls,platform?1:0);assert.equal(await h.owner.close(),terminal);}
+ });
+ await test('late provider settlement or rejection cannot upgrade an uncertain reentrant close',async()=>{
+  for(const platform of [false,true])for(const reject of [false,true]){const gate=deferred();void gate.promise.catch(()=>{});const h=retirementHarness({platform,providerGate:gate});await h.owner.prepare();let nested;h.state.onAbort=()=>{nested=h.owner.close();};const close=h.owner.close();assert.equal(nested,close);const terminal=await close;assert.equal(terminal.drained,false);assert.equal(terminal.poolsClosed,false);assert.equal(h.state.poolCloses,0);if(reject)gate.reject(Error('Synthetic provider stop rejected late'));else gate.resolve({drained:true});await flush();assert.equal(await h.owner.close(),terminal);assert.equal(h.state.providerStops,1);assert.equal(h.state.poolCloses,0);}
+ });
+ await test('platform cancellation observes late original preparation and ingress without closing pools',async()=>{
+  for(const phase of ['prepare','ingress']){const gate=deferred();void gate.promise.catch(()=>{});const h=retirementHarness({platform:true,...(phase==='prepare'?{prepareGate:gate}:{ingressGate:gate})});const preparation=h.owner.prepare();void preparation.catch(()=>{});if(phase==='prepare')await flush();else await preparation;let nested;h.state.onAbort=()=>{nested=h.owner.close();};const close=h.owner.close();assert.equal(close,nested);const terminal=await close;assert.equal(terminal.drained,false);assert.equal(terminal.poolsClosed,false);assert.equal(h.state.poolCloses,0);h.state.clock=31;gate.reject(Error('Synthetic original rejected after retirement'));if(phase==='prepare')await assert.rejects(preparation);await flush();assert.equal(await h.owner.close(),terminal);assert.equal(h.state.poolCloses,0);assert.equal(h.state.ingressCalls,1);}
+ });
+ await test('late pool closure cannot replace the original terminal after the remaining deadline expires',async()=>{
+  for(const platform of [false,true]){const gate=deferred(),h=retirementHarness({platform,poolGate:gate});await h.owner.prepare();h.state.onProviderStop=()=>{h.state.clock=20;};const close=h.owner.close(),terminal=await close;assert.equal(terminal.drained,false);assert.equal(terminal.poolsClosed,false);assert.equal(h.state.poolCloses,1);assert(h.state.timerDelays.some(ms=>ms>0&&ms<=10),'Only the remaining original budget can reach pool close');gate.resolve({closed:true,poolCount:3});await flush();assert.equal(await h.owner.close(),terminal);assert.equal(h.state.poolCloses,1);}
+ });
+ await test('native deployment without providers preserves one reentrant original pool close',async()=>{
+  const h=retirementHarness({providers:false});await h.owner.prepare();let nested;h.state.onAbort=()=>{nested=h.owner.close();};const close=h.owner.close();assert.equal(close,nested);assert.equal((await close).closed,true);assert.equal(h.state.poolCloses,1);assert.equal(h.state.providerStops,0);
+ });
+ console.log(JSON.stringify({scope:'Fresh role connections and original web deployment retirement; synthetic boundaries only',results},null,2));if(results.some(result=>result.status==='FAIL'))process.exitCode=1;
 })().catch(error=>{console.error(error);process.exitCode=1;});
