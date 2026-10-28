@@ -11,6 +11,8 @@ export interface NativePlatformCredentialGrant extends NativePlatformCredentialC
 export interface NativePlatformBindingsOptions {
  authorizeCredentialAccess(context:Readonly<NativePlatformCredentialGrant>):Promise<boolean>|boolean;
  stopTimeoutMs:number;
+ /** Explicit selection only; omission preserves both original providers. */
+ providerIds?:readonly NativePlatformProviderId[];
 }
 export interface NativePlatformBindingStop {
  readonly drained:boolean;
@@ -24,11 +26,17 @@ export interface NativePlatformBindingStop {
  readonly accepting:false;
  readonly restartAllowed:false;
 }
+export interface NativePlatformCredentialRefs {
+ readonly anthropic:'env:ANTHROPIC_API_KEY';
+ readonly openai:'env:OPENAI_API_KEY';
+}
 export interface NativePlatformBindings {
- readonly credentialRefs:Readonly<{anthropic:'env:ANTHROPIC_API_KEY';openai:'env:OPENAI_API_KEY'}>;
+ readonly credentialRefs:Readonly<Partial<NativePlatformCredentialRefs>>;
  readCredential(context:Readonly<NativePlatformCredentialContext>):Promise<string>;
  resolveAddress(context:Readonly<{hostname:string;signal:AbortSignal}>):Promise<string>;
  stop():Promise<Readonly<NativePlatformBindingStop>>;
 }
-/** Import is inert. Explicit creation captures exactly the two native API keys. */
+/** Import is inert. Explicit creation captures only selected native API keys. */
+export declare function createNativePlatformBindings(options:NativePlatformBindingsOptions & {providerIds?:never}):Readonly<NativePlatformBindings & {credentialRefs:Readonly<NativePlatformCredentialRefs>}>;
+export declare function createNativePlatformBindings<ProviderId extends NativePlatformProviderId>(options:NativePlatformBindingsOptions & {providerIds:readonly ProviderId[]}):Readonly<NativePlatformBindings & {credentialRefs:Readonly<Pick<NativePlatformCredentialRefs,ProviderId>>}>;
 export declare function createNativePlatformBindings(options:NativePlatformBindingsOptions):Readonly<NativePlatformBindings>;

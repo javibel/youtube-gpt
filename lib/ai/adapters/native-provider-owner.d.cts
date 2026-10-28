@@ -23,12 +23,15 @@ export interface NativeWebProviderConfiguration {
  maxRequestBytes:number;
  maxResponseBytes:number;
 }
-export interface NativeWebProviderOwnerOptions {
- anthropic:NativeWebProviderConfiguration & {apiVersion:string;workspaceId:string|null};
- // The public wire currently supports only explicit key-scoped account routing.
- openai:NativeWebProviderConfiguration & {organization:null;project:null};
- stopTimeoutMs:number;
-}
+export type NativeWebAnthropicConfiguration=NativeWebProviderConfiguration & {apiVersion:string;workspaceId:string|null};
+// The public wire currently supports only explicit key-scoped account routing.
+export type NativeWebOpenAIConfiguration=NativeWebProviderConfiguration & {organization:null;project:null};
+/** Explicitly provide one or both blocks; no provider is inferred or selected. */
+export type NativeWebProviderOwnerOptions={stopTimeoutMs:number} & (
+ | {anthropic:NativeWebAnthropicConfiguration;openai?:never}
+ | {anthropic?:never;openai:NativeWebOpenAIConfiguration}
+ | {anthropic:NativeWebAnthropicConfiguration;openai:NativeWebOpenAIConfiguration}
+);
 export type NativeWebProviderOptions=NativeWebProviderOwnerOptions;
 export interface NativeWebProviderStop {
  readonly drained:boolean;
