@@ -1,7 +1,7 @@
 import type {RoleConnectionOwnerOptions} from '../../contracts/ai/v1/postgres-connections.cjs';
 import type {OperationalWebOptions} from './operational-composition.cjs';
 import type {NativeWebProviderOptions} from './adapters/native-provider-owner.cjs';
-type RuntimeBase=Omit<OperationalWebOptions,'connections'|'databaseName'|'timeoutMs'>;
+type RuntimeBase=Omit<OperationalWebOptions,'connections'|'databaseName'|'timeoutMs'|'image'>&{image?:import('./ideogram-shared-runtime.cjs').OriginalWebImageCapabilities};
 export type OperationalWebDeploymentRuntime=
  | (RuntimeBase&{nativeProviders?:never})
  | (Omit<RuntimeBase,'adapters'|'checkCredential'|'checkModelAvailability'>&{nativeProviders:NativeWebProviderOptions;adapters?:never;checkCredential?:never;checkModelAvailability?:never});

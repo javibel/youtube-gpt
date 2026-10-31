@@ -26,11 +26,12 @@ export type OriginalNativeWebProviderSelection={stopTimeoutMs:number}&(
 );
 export interface OriginalNativePlatformWebHostConfiguration {
  deployment:Omit<PlatformWebDeploymentOptions,'runtime'>&{
-  runtime:Omit<PlatformWebDeploymentOptions['runtime'],'nativeProviders'|'adapters'|'checkCredential'|'checkModelAvailability'>;
+  runtime:Omit<PlatformWebDeploymentOptions['runtime'],'nativeProviders'|'adapters'|'checkCredential'|'checkModelAvailability'|'image'>;
  };
  providers:OriginalNativeWebProviderSelection;
  authorizeCredentialAccess:NativePlatformBindingsOptions['authorizeCredentialAccess'];
  bindingStopTimeoutMs:number;
+ image?:import('./ideogram-shared-runtime.cjs').OriginalWebImageCapabilities;
 }
 /** Inert registration; host preparation creates and owns exactly the selected native bindings. */
 export declare function registerOriginalNativePlatformWebHostConfiguration(configuration:OriginalNativePlatformWebHostConfiguration,options:OriginalPlatformWebHostOptions):void;

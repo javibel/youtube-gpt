@@ -1,6 +1,7 @@
 import type {SharedRuntimeDependencies,SharedRuntimeReadiness} from './shared-runtime-bootstrap.cjs';
 import type {OperationalPostgresOptions} from '../../contracts/ai/v1/postgres-storage.cjs';
 export interface OperationalWebOptions extends Omit<SharedRuntimeDependencies,'readerDatabase'|'activatorDatabase'|'executorDatabase'|'storageIdentity'> {
+ image?:import('./ideogram-shared-runtime.cjs').IdeogramSharedRuntimeDependencies['image'];
  connections:Record<'reader'|'activator'|'executor',OperationalPostgresOptions['connect']>;
  databaseName:string;
  operatingBudget:NonNullable<SharedRuntimeDependencies['operatingBudget']>;

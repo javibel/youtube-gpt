@@ -11,3 +11,10 @@ export interface IdeogramSharedRuntimeDependencies extends SharedRuntimeDependen
  };
 }
 export declare function createIdeogramSharedRuntimeDependencies(options:IdeogramSharedRuntimeDependencies):Readonly<SharedRuntimeDependencies>;
+/** Original image capability set. Data alone never supplies checkers or draining. */
+export type OriginalWebImageCapabilities=IdeogramSharedRuntimeDependencies['image'] & {
+ checkCredential:SharedRuntimeDependencies['checkCredential'];
+ checkModelAvailability:SharedRuntimeDependencies['checkModelAvailability'];
+ stop():Promise<Readonly<{drained:boolean;uncertain?:boolean}>>|Readonly<{drained:boolean;uncertain?:boolean}>;
+ stopTimeoutMs:number;
+};
