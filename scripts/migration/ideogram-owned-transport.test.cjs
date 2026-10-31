@@ -36,7 +36,7 @@ async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}
   const r=fixture({holdBody:true});const create=r.create();void create.catch(()=>{});await flush();let finished=false;const stopped=r.http.stop({timeoutMs:500}).then(x=>{finished=true;return x;});await flush();await assert.rejects(create);assert.equal(r.calls[0].request.destroyed,true);assert.equal(r.calls[0].response.destroyed,true);r.close('request','response');await flush();assert.equal(finished,false);r.close('socket');assert.equal((await stopped).drained,true);assert.equal(r.sends.length,1);
  });
  await test('generic fetch and stalled cancellation never manufacture a native stop capability',async()=>{
-  let release;const response={ok:true,redirected:false,headers:new Headers({'content-type':'application/json'}),body:{getReader:()=>({read:()=>new Promise(()=>{}),cancel:()=>new Promise(resolve=>{release=resolve;})})};
+  let release;const response={ok:true,redirected:false,headers:new Headers({'content-type':'application/json'}),body:{getReader:()=>({read:()=>new Promise(()=>{}),cancel:()=>new Promise(resolve=>{release=resolve;})})}};
   const http=createIdeogramHttp({apiKey:'synthetic-key',downloadHosts:['images.example.com'],fetch:async()=>response});await assert.rejects(http.create(payload,{timeout:10,maxRetries:0}));const result=await http.stop({timeoutMs:15});assert.equal(result.drained,false);assert(result.pending>=1);release();assert.strictEqual(await http.stop({timeoutMs:100}),result);
  });
  await test('native field/host/TLS rejection precedes wire dispatch and unconfirmed native objects remain owned',async()=>{
