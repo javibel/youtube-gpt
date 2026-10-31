@@ -42,3 +42,19 @@ export declare function createObserverEnvelopeContract(policy:ObserverEnvelopePo
  encodeResult(value:ObserverResultData,signature:string,originalRequestWire:string):string;
  parseResult(wire:string,originalRequestWire:string):UntrustedObserverData<ObserverResultData>;
 }>;
+
+/** Supplied separately by trusted host construction. This data does not enroll a peer. */
+export interface OriginalObserverPublicPin extends ObserverPeerData {
+ publicKey:import('node:crypto').KeyObject;spkiSha256:string;
+}
+/** A cryptographic fact only. The enclosed claims remain untrusted observer data. */
+export interface ObserverSignatureCheck<T> {
+ readonly scope:'signature-only-no-authority';readonly algorithm:'Ed25519';
+ readonly signer:Readonly<ObserverPeerData & {spkiSha256:string}>;
+ readonly data:UntrustedObserverData<T>;
+}
+/** No enrollment, signing, freshness, read consent, readiness or native lifecycle capability. */
+export declare function createPinnedObserverSignatureChecker(policy:ObserverEnvelopePolicy,pins:{requester:OriginalObserverPublicPin;responder:OriginalObserverPublicPin}):Readonly<{
+ checkRequestSignature(wire:string):ObserverSignatureCheck<ObserverRequestData>;
+ checkResultSignature(wire:string,originalRequestWire:string):ObserverSignatureCheck<ObserverResultData>;
+}>;

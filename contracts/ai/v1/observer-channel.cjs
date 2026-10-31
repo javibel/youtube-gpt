@@ -87,3 +87,47 @@ function createObserverEnvelopeContract(input){
  });
 }
 module.exports={OBSERVER_ENVELOPE_VERSION:VERSION,OBSERVER_ENVELOPE_PURPOSE:PURPOSE,createObserverEnvelopeContract};
+
+/** Trusted host construction only: public pins are not enrolled by this function.
+ * Native signature checks report cryptographic facts, never source/read authority.
+ * No keys are loaded at import, no private signing key or IO is accepted here.
+ */
+function createPinnedObserverSignatureChecker(policy,originalPublicPins){
+ const {KeyObject,createPublicKey,createHash,verify}=require('node:crypto');
+ const contract=createObserverEnvelopeContract(policy);
+ const pins=exact(originalPublicPins,['requester','responder']);
+ const originalType=Object.getOwnPropertyDescriptor(KeyObject.prototype,'type').get;
+ function capture(value,expected){
+  const pin=exact(value,['peerId','keyId','publicKey','spkiSha256']);
+  if(pin.peerId!==expected.peerId||pin.keyId!==expected.keyId||!digest(pin.spkiSha256)||types.isProxy(pin.publicKey)||!(pin.publicKey instanceof KeyObject)||originalType.call(pin.publicKey)!=='public'||Object.hasOwn(pin.publicKey,'export'))fail();
+  let der,key;
+  try{
+   der=pin.publicKey.export({format:'der',type:'spki'});
+   // Exact Ed25519 SPKI, then import our own immutable native key. No PEM,
+   // private keys, options, callbacks or public-key fields from an envelope.
+   if(!Buffer.isBuffer(der)||der.length!==44||der.subarray(0,12).toString('hex')!=='302a300506032b6570032100')fail();
+   if(createHash('sha256').update(der).digest('hex')!==pin.spkiSha256)fail();
+   key=createPublicKey({key:Buffer.from(der),format:'der',type:'spki'});
+   if(key.type!=='public'||key.asymmetricKeyType!=='ed25519')fail();
+  }catch{fail();}
+  return{key,identity:Object.freeze({peerId:pin.peerId,keyId:pin.keyId,spkiSha256:pin.spkiSha256})};
+ }
+ // Capture policy identities through the validated immutable grammar, not a
+ // caller-owned policy reference which might change after construction.
+ const peers=exact(policy,['runtimeId','providerId','credentialRef','models','configurationRevision','configurationDigest','requester','responder']);
+ const requester=capture(pins.requester,peer(peers.requester)),responder=capture(pins.responder,peer(peers.responder));
+ if(requester.identity.spkiSha256===responder.identity.spkiSha256)fail();
+ const check=(data,pin)=>{
+  let valid=false;try{valid=verify(null,Buffer.from(data.signingText,'utf8'),pin.key,Buffer.from(data.signature,'base64url'));}catch{}
+  if(!valid)throw new ContractError('permissions','Observer signature does not match the host-pinned public key');
+  return Object.freeze({scope:'signature-only-no-authority',algorithm:'Ed25519',signer:pin.identity,data});
+ };
+ return Object.freeze({
+  checkRequestSignature:wire=>check(contract.parseRequest(wire),requester),
+  checkResultSignature(wire,originalRequestWire){
+   check(contract.parseRequest(originalRequestWire),requester);
+   return check(contract.parseResult(wire,originalRequestWire),responder);
+  },
+ });
+}
+module.exports.createPinnedObserverSignatureChecker=createPinnedObserverSignatureChecker;
