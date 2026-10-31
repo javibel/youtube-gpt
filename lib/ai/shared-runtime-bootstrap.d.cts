@@ -4,6 +4,8 @@ import type { Provider } from '../../contracts/ai/v1/core.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 import type { OperatingBudgetPolicy } from '../../contracts/ai/v1/operating-budget.cjs';
 export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity'> {
+ /** Original agent observers for full-catalog administration only; never web execution. */
+ administrativeAgentReadiness?:Readonly<Pick<AdministrativeConfigurationDependencies,'checkCredential'|'checkModelAvailability'>>;
  adapters: Provider[];
  catalogAdapters?: Pick<Provider,'providerId'|'adapterVersion'|'enabled'|'credentialRef'|'models'>[];
  executorDatabase: OpenAIRuntimeDependencies['database'];
