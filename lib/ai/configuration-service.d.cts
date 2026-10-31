@@ -20,3 +20,5 @@ export interface ConfigurationService {
   activate(previewId: string): Promise<unknown>;
 }
 export declare function createConfigurationService(dependencies: ConfigurationDependencies): Readonly<ConfigurationService>;
+/** Trusted read-only startup validator; has no actor, preview, storage or activation. */
+export declare function createConfigurationValidator(dependencies:Pick<ConfigurationDependencies,'registry'|'taskCatalog'|'getRuntimes'|'checkCredential'|'checkModelAvailability'>,scope?:Readonly<{runtimeId:string}>):(configuration:unknown)=>Promise<unknown[]>;

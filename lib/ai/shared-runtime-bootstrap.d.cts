@@ -3,7 +3,7 @@ import type { OpenAIRuntimeDependencies } from './openai-runtime-bootstrap.cjs';
 import type { Provider } from '../../contracts/ai/v1/core.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 import type { OperatingBudgetPolicy } from '../../contracts/ai/v1/operating-budget.cjs';
-export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity'> {
+export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity' | 'observationRuntimeId'> {
  /** Original agent observers for full-catalog administration only; never web execution. */
  administrativeAgentReadiness?:Readonly<Pick<AdministrativeConfigurationDependencies,'checkCredential'|'checkModelAvailability'>>;
  adapters: Provider[];

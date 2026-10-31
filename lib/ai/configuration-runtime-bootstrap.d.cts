@@ -10,11 +10,14 @@ export interface AdministrativeConfigurationDependencies {
  checkCredential: (context:{runtimeId:string;credentialRef:string;providerId:string;signal?:AbortSignal})=>Promise<boolean>;
  checkModelAvailability: ConfigurationDependencies['checkModelAvailability'];
  timeoutMs: number;
+ /** Internal startup observation selector; never an HTTP configuration field. */
+ observationRuntimeId?:string;
 }
 export interface AdministrativeConfigurationReadiness {
  configRevision:string; activeProfile:string; contractVersion:string;
  taskTypes:readonly string[]; storage:Readonly<{database:string;address:string;port:number}>;
  assignments:readonly unknown[];
+ observationScope:Readonly<{kind:'all'|'runtime';runtimeId:string|null;observedRuntimeIds:readonly string[];unobservedRuntimeIds:readonly string[]}>;
 }
 export declare function createConfigurationRuntimeBootstrap(options:AdministrativeConfigurationDependencies):Readonly<{
  prepare(options?:{signal?:AbortSignal}):Promise<Readonly<{dependencies:Omit<ConfigurationDependencies,'getActor'>;readiness:Readonly<AdministrativeConfigurationReadiness>}>>;
