@@ -32,6 +32,7 @@ export interface OriginalNativePlatformWebHostConfiguration {
  authorizeCredentialAccess:NativePlatformBindingsOptions['authorizeCredentialAccess'];
  bindingStopTimeoutMs:number;
  image?:import('./ideogram-shared-runtime.cjs').OriginalWebImageCapabilities;
+ nativeObserverIdentity?:import('./adapters/native-platform-bindings.cjs').NativePlatformObserverIdentityOptions;
 }
 /** Inert registration; host preparation creates and owns exactly the selected native bindings. */
 export declare function registerOriginalNativePlatformWebHostConfiguration(configuration:OriginalNativePlatformWebHostConfiguration,options:OriginalPlatformWebHostOptions):void;

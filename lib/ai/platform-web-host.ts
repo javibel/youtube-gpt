@@ -132,6 +132,7 @@ function createRegisteredPlatformWebHost(original:Readonly<OriginalPlatformWebHo
   // The host seals all retained handles before any abort listener can reenter,
   // including a listener raised while another owned binding is being stopped.
   return Object.freeze({credentialRefs:binding.credentialRefs,
+   ...(binding.observerSigning?{observerSigning:binding.observerSigning}:{}),
    readCredential:(context:Parameters<NativePlatformBindings['readCredential']>[0])=>{check();return readCredential(context);},
    resolveAddress:(context:Parameters<NativePlatformBindings['resolveAddress']>[0])=>{check();return resolveAddress(context);},
    stop});

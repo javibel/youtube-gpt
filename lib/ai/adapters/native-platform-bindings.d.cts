@@ -1,3 +1,18 @@
+import type {OriginalWebObserverSigningCapability} from '../platform-web-deployment.cjs';
+export interface NativePlatformObserverIdentityGrant {
+ readonly kind:'use-native-platform-observer-identity';readonly phase:'read-private-key'|'sign-request';
+ readonly binding:'env:YTV_AI_OBSERVER_SIGNING_PRIVATE_KEY';readonly purpose:'agent-readiness-observation';
+ readonly identity:Readonly<{peerId:string;keyId:string;spkiSha256:string}>;
+ readonly requestId:string;readonly nonce:string;readonly configurationRevision:string;readonly configurationDigest:string;
+ readonly signingTextDigest:string;readonly signingTextBytes:number;readonly signal:AbortSignal;
+}
+export interface NativePlatformObserverIdentityOptions {
+ policy:OriginalWebObserverSigningCapability['policy'];
+ identity:OriginalWebObserverSigningCapability['identity'];
+ clock:OriginalWebObserverSigningCapability['clock'];
+ authorizeSigning:OriginalWebObserverSigningCapability['authorizeSigning'];
+ authorizeIdentityAccess(context:Readonly<NativePlatformObserverIdentityGrant>):boolean|Promise<boolean>;
+}
 export type NativePlatformProviderId='anthropic'|'openai';
 export interface NativePlatformCredentialContext {
  readonly runtimeId:'web';
@@ -13,6 +28,8 @@ export interface NativePlatformBindingsOptions {
  stopTimeoutMs:number;
  /** Explicit selection only; omission preserves both original providers. */
  providerIds?:readonly NativePlatformProviderId[];
+ /** Optional original observation identity;the private env value isread only after a separate live grant. */
+ observerIdentity?:NativePlatformObserverIdentityOptions;
 }
 export interface NativePlatformBindingStop {
  readonly drained:boolean;
@@ -31,6 +48,10 @@ export interface NativePlatformCredentialRefs {
  readonly openai:'env:OPENAI_API_KEY';
 }
 export interface NativePlatformBindings {
+ readonly observerSigning?:Readonly<Omit<OriginalWebObserverSigningCapability,'sign'|'stop'>&{
+  sign(context:Parameters<OriginalWebObserverSigningCapability['sign']>[0]):Promise<string>;
+  stop():Promise<Readonly<NativePlatformBindingStop>>;
+ }>;
  readonly credentialRefs:Readonly<Partial<NativePlatformCredentialRefs>>;
  readCredential(context:Readonly<NativePlatformCredentialContext>):Promise<string>;
  resolveAddress(context:Readonly<{hostname:string;signal:AbortSignal}>):Promise<string>;
