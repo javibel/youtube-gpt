@@ -2,7 +2,7 @@ import type { Registry, Configuration } from '../../contracts/ai/v1/core.cjs';
 import type { ControlStore } from '../../contracts/ai/v1/control-store.cjs';
 export interface ConfigurationDependencies {
   registry: Registry;
-  reader: Pick<ControlStore, 'active' | 'revision'>;
+  reader: Pick<ControlStore, 'active' | 'revision'> & Partial<Pick<ControlStore,'bindingOriginal'>>;
   activator: Pick<ControlStore, 'publish' | 'activate'>;
   taskCatalog: Record<string, { executor: 'ai' | 'coding'; capabilities: string[]; runtimeIds: string[]; agentIds?: string[] }>;
   getActor: (action: string) => Promise<string | null>;

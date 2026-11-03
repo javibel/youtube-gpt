@@ -1,8 +1,8 @@
-import type { ControlSchema } from '../../contracts/ai/v1/control-store.cjs';
+import type { ControlSchema,RoleBoundDatabase } from '../../contracts/ai/v1/control-store.cjs';
 import type { ConfigurationDependencies } from './configuration-service.cjs';
 export interface AdministrativeConfigurationDependencies {
  registry: ConfigurationDependencies['registry'];
- readerDatabase: {role:'reader';controlSchema?:ControlSchema;transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
+ readerDatabase: {role:'reader';controlSchema?:ControlSchema;transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>} & Pick<RoleBoundDatabase,'transactionOriginal'>;
  activatorDatabase: {role:'activator';controlSchema?:ControlSchema;transaction<T>(fn:(tx:{query(sql:string,args?:unknown[]):Promise<Record<string,unknown>[]>})=>Promise<T>):Promise<T>};
  storageIdentity: {controlSchema?:ControlSchema;databaseName:string;readerRole:string;activatorRole:string};
  taskCatalog: ConfigurationDependencies['taskCatalog'];
