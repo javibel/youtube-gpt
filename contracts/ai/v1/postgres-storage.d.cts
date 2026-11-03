@@ -11,7 +11,13 @@ export interface OperationalPostgresOptions {
  connect:(options:{signal?:AbortSignal})=>Promise<NativePostgresClient>;
  timeoutMs:number;
 }
+/** Same native worker; settlement is not commit authority or stream/pool close. */
+export interface OriginalPostgresTransaction<T> {
+ readonly result:Promise<T>;
+ readonly settled:Promise<void>;
+}
 export declare function createPostgresControlDatabase(options:OperationalPostgresOptions):Readonly<RoleBoundDatabase & {
  controlSchema:'ytv_ai_v1';
  transaction<T>(work:(tx:Transaction)=>Promise<T>,options?:{signal?:AbortSignal}):Promise<T>;
+ transactionOriginal<T>(work:(tx:Transaction)=>Promise<T>,options?:{signal?:AbortSignal}):Readonly<OriginalPostgresTransaction<T>>;
 }>;

@@ -2,6 +2,7 @@
 const {performance}=require('node:perf_hooks');
 const {ContractError}=require('./core.cjs');
 const {controlSchemaFor}=require('./control-store.cjs');
+const {types}=require('node:util');
 const roles=Object.freeze({reader:'ytv_ai_reader',activator:'ytv_ai_activator',executor:'ytv_ai_executor'});
 const fail=(code,message)=>{throw new ContractError(code,message);};
 const identitySql="SELECT current_database() AS database_name,current_user AS role_name,session_user AS session_role,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolinherit,r.rolreplication,r.rolbypassrls,(SELECT count(*)::int FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid) AS memberships FROM pg_catalog.pg_roles r WHERE r.rolname=current_user";
@@ -17,7 +18,7 @@ function createPostgresControlDatabase(options={}){
   ||options.timeoutMs<1||options.timeoutMs>30000)fail('configuration','Explicit operational database capability required');
  const role=options.role,controlSchema=controlSchemaFor(options),databaseName=options.databaseName,timeoutMs=options.timeoutMs;
  const connect=options.connect,expectedRole=roles[role];
- return Object.freeze({role,controlSchema,async transaction(work,{signal}={}){
+ function begin(work,{signal}={}){
   if(typeof work!=='function'||signal!==undefined&&!(signal instanceof AbortSignal))fail('configuration','Bounded transaction callback required');
   if(signal?.aborted)fail('cancelled','Storage transaction was cancelled');
   const deadline=performance.now()+timeoutMs;
@@ -59,8 +60,24 @@ function createPostgresControlDatabase(options={}){
   // A late connection is owned and reaped by the original continuation. It can
   // never run the callback after retirement or become a replacement capability.
   void original.catch(()=>{});
-  try{return await Promise.race([original,cancelled]);}
-  finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
- }});
+  // Settlement observes the original worker through its finally/release, even
+  // after the borrower's cancellation race finishes. It deliberately exports
+  // no result, error, client, commit authority or claim of stream/pool closure.
+  const settled=original.then(()=>undefined,()=>undefined);
+  const result=Promise.race([original,cancelled]).finally(()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);});
+  void result.catch(()=>{});
+  return Object.freeze({result,settled});
+ }
+ return Object.freeze({role,controlSchema,
+  async transaction(work,options={}){return begin(work,options).result;},
+  transactionOriginal(work,options={}){
+   if(typeof work!=='function'||types.isProxy(work)||!options||typeof options!=='object'||Array.isArray(options)||types.isProxy(options))fail('configuration','Original native transaction invocation required');
+   const descriptors=Object.getOwnPropertyDescriptors(options),keys=Reflect.ownKeys(descriptors);
+   if(keys.some(k=>k!=='signal'||!Object.hasOwn(descriptors[k],'value')))fail('configuration','Original native transaction invocation required');
+   const signal=descriptors.signal?.value;
+   if(signal!==undefined&&(types.isProxy(signal)||!(signal instanceof AbortSignal)))fail('configuration','Original native transaction signal required');
+   return begin(work,{signal});
+  }
+ });
 }
 module.exports={createPostgresControlDatabase};
