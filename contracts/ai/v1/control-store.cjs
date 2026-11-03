@@ -22,6 +22,8 @@ function createControlStore(database,registry,options={}){
  if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).some(k=>k!=='validateAdmission')||options.validateAdmission!==undefined&&typeof options.validateAdmission!=='function')fail('configuration','Original admission restriction required');
  const validateAdmission=options.validateAdmission;
  const restrict=(taskType,snapshot,budgetId,executor)=>{if(validateAdmission&&validateAdmission(immutable({taskType,snapshot,budgetId,executor}))!==true)fail('permissions','Admission is outside the configured operating scope');};
+ const nativeDescriptor=Object.getOwnPropertyDescriptor(database,'transactionOriginal');
+ const originalRead=nativeDescriptor&&Object.hasOwn(nativeDescriptor,'value')&&typeof nativeDescriptor.value==='function'&&!require('node:util').types.isProxy(nativeDescriptor.value)?nativeDescriptor.value.bind(database):null;
  const role=database.role,controlSchema=controlSchemaFor(database),originalTransaction=database.transaction.bind(database);
  database=Object.freeze({role,controlSchema,transaction:work=>originalTransaction(tx=>work(Object.freeze({query:(sql,args)=>tx.query(sqlForControlSchema(controlSchema,sql),args)})))});
  const requireRole=expected=>{if(role!==expected)fail('permissions','Operation not granted to this runtime role');};
@@ -62,6 +64,16 @@ function createControlStore(database,registry,options={}){
   },
   async active(){return database.transaction(async tx=>(await tx.query('SELECT r.payload FROM __ytv_control__.active_revision a JOIN __ytv_control__.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload??null);},
   async revision(revision){if(typeof revision!=='string'||!revision.trim())fail('invalid_format','Revision identity required');return database.transaction(async tx=>(await tx.query('SELECT payload FROM __ytv_control__.revisions WHERE revision=$1',[revision]))[0]?.payload??null);},
+  bindingOriginal(revision,invocation={}){
+   requireRole('reader');if(!originalRead)fail('permissions','Original native read settlement capability required');
+   if(typeof revision!=='string'||!revision.trim()||revision.length>128)fail('invalid_format','Exact bounded revision required');
+   // One native read-only statement snapshot. No preview, validation, account
+   // reads or activation. Payloads remain data; the caller retains settled.
+   return originalRead(async tx=>{
+    const rows=await tx.query(sqlForControlSchema(controlSchema,'SELECT (SELECT r.payload FROM __ytv_control__.active_revision a JOIN __ytv_control__.revisions r ON r.revision=a.revision WHERE a.singleton=true) AS active,(SELECT payload FROM __ytv_control__.revisions WHERE revision=$1) AS revision'),[revision]);
+    return Object.freeze({active:rows[0]?.active??null,revision:rows[0]?.revision??null});
+   },invocation);
+  },
   async metrics({from,to}={}){
    requireRole('reader');
    const start=new Date(from),end=new Date(to);

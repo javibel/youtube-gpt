@@ -5,6 +5,7 @@ export interface RoleBoundDatabase {
   controlSchema?: ControlSchema;
   role: 'reader' | 'activator' | 'executor';
   transaction<T>(work: (transaction: Transaction) => Promise<T>): Promise<T>;
+  transactionOriginal?<T>(work:(transaction:Transaction)=>Promise<T>,options?:{signal?:AbortSignal}):Readonly<{result:Promise<T>;settled:Promise<void>}>;
 }
 export interface Admission { runId: string; snapshot: Readonly<Snapshot>; status: Status | 'running' | 'uncertain'; replay: boolean; result?: Readonly<Result>; accounting?: { state: 'settled' | 'uncertain'; replay: boolean } }
 export interface MetricGroup { providerId: string; revision: string; taskType: string; agentId: string | null; currency: string; runs: number; completed: number; noncompleted: number; unsettled: number; knownCostMicros: string; retainedMicros: string; reportedUnsettledCostMicros: string; heldWithoutCostCount: number; latencySamples: number; latencyP95Ms: number | null }
@@ -12,6 +13,7 @@ export interface ControlStore {
   publish(configuration: Configuration, actor: { actor: string }): Promise<{ revision: string }>;
   activate(revision: string, context: { expectedRevision?: string | null; actor: string; reason: string }): Promise<{ previousRevision: string | null; revision: string }>;
   active(): Promise<Configuration | null>;
+  bindingOriginal(revision:string,options?:{signal?:AbortSignal}):Readonly<{result:Promise<Readonly<{active:Configuration|null;revision:Configuration|null}>>;settled:Promise<void>}>;
   revision(revision: string): Promise<Configuration | null>;
   metrics(interval: { from: string; to: string }): Promise<ReadonlyArray<Readonly<MetricGroup>>>;
   admit(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding' }): Promise<Admission>;
