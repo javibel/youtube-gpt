@@ -3,6 +3,11 @@ const crypto=require('node:crypto'),{types}=require('node:util');
 const {createPinnedObserverSignatureChecker}=require('./observer-channel.cjs');
 const {ContractError}=require('./core.cjs');
 const fail=()=>{throw new ContractError('permissions','Original relay peer not confirmed');};
+function observerRelayControlSigningText(policy,action,requestId,issuedAt){
+ require('./observer-channel.cjs').createObserverEnvelopeContract(policy);
+ if(!['claim','result'].includes(action)||typeof requestId!=='string'||!/^obs_[A-Za-z0-9_-]{16,96}$/.test(requestId)||!Number.isSafeInteger(issuedAt)||issuedAt<1)fail();
+ return 'YTV-OBSERVER-RELAY-V1\n'+JSON.stringify({action,requestId,issuedAt,peerId:policy.responder.peerId,keyId:policy.responder.keyId});
+}
 function createObserverRelayProtocol(policy,pins){
  // Existing constructor validates and pins both native Ed25519 public keys.
  createPinnedObserverSignatureChecker(policy,pins);
@@ -25,4 +30,4 @@ function createObserverRelayProtocol(policy,pins){
   }
  });
 }
-module.exports={createObserverRelayProtocol};
+module.exports={createObserverRelayProtocol,observerRelayControlSigningText};
