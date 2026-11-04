@@ -22,6 +22,7 @@ export interface PlatformWebDeploymentOptions {
  prepareTimeoutMs:number;
  stopTimeoutMs:number;
  observerSigning?:OriginalWebObserverSigningCapability;
+ observerChannel?:Readonly<{policy:unknown;pins:unknown;clock:()=>Date;verifyAgentOriginal:(context:unknown)=>Promise<boolean>|boolean}>;
 }
 export declare function createPlatformWebDeployment(options:PlatformWebDeploymentOptions):ReturnType<typeof createOperationalWebDeployment>&Readonly<{
  bindObserverChannel(input:Readonly<{policy:unknown;pins:unknown;clock:()=>Date;verifyAgentOriginal:(context:unknown)=>Promise<boolean>}>):unknown;
