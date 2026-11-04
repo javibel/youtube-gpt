@@ -24,5 +24,6 @@ export interface PlatformWebDeploymentOptions {
  observerSigning?:OriginalWebObserverSigningCapability;
 }
 export declare function createPlatformWebDeployment(options:PlatformWebDeploymentOptions):ReturnType<typeof createOperationalWebDeployment>&Readonly<{
+ bindObserverChannel(input:Readonly<{policy:unknown;pins:unknown;clock:()=>Date;verifyAgentOriginal:(context:unknown)=>Promise<boolean>}>):unknown;
  signObserverRequest(request:ObserverRequestData,invocation?:{signal?:AbortSignal}):Promise<Readonly<{scope:'signature-only-no-authority';trust:'untrusted-observer-data';identity:Readonly<{peerId:string;keyId:string;spkiSha256:string}>;wire:string}>>;
 }>;
