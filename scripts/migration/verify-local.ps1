@@ -1,4 +1,4 @@
-param([switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
+param([switch]$BudgetSettlement,[switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -46,6 +46,27 @@ if ($NativeRelease) {
     } finally { Pop-Location }
     exit 0
 }
+if ($BudgetSettlement) {
+    if ($WithDatabase) { throw 'New owned budget-settlement fixture required' }
+    $runner = Join-Path $repo '../migration-reporting/native-agent-release-2026-11-05-v7'
+    $guard = Join-Path $runner 'fixture-guard.cjs'
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    Push-Location -LiteralPath $repo
+    try {
+        if ($kind -eq 'agent') {
+            & $nodeExe --require $guard scripts/migration/native-agent-release-functional.test.cjs (Join-Path $runner 'postgres')
+            $result=$LASTEXITCODE
+            exit $result
+        }
+        & $nodeExe --require $guard scripts/migration/shared-runtime.test.cjs
+        if ($LASTEXITCODE -ne 0) { throw 'Affected shared runtime check failed' }
+        & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+        if ($LASTEXITCODE -ne 0) { throw 'Native transaction handle type check failed' }
+        Write-Output '{"complete":true,"programs":2,"scope":"native-budget-query-settlement-affected"}'
+    } finally { Pop-Location }
+    exit 0
+}
+
 if ($AgentRelease) {
     if ($WithDatabase) { throw 'Original agent release checks use their new fixture runner' }
     $guard = Join-Path $repo '../migration-reporting/native-agent-release-2026-11-05-v2/fixture-guard.cjs'
