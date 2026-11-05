@@ -3,8 +3,9 @@
 // owner -> actual TLS fixture SQL -> installed guarded task -> counted native
 // provider wire -> durable result/retrieval -> SAME owner shutdown.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module'),{EventEmitter}=require('node:events'),{PassThrough}=require('node:stream');
-const root=path.resolve(__dirname,'../../../..'),repo=path.join(root,'work/migration-web'),fixture=path.join(root,'work/migration-reporting/native-release-2026-11-05/postgres'),config=JSON.parse(fs.readFileSync(path.join(fixture,'synthetic-config.json')));
-assert.equal(config.port,55667);assert.equal(config.host,'127.0.0.1');
+const root=path.resolve(__dirname,'../../../..'),repo=path.join(root,'work/migration-web'),fixture=path.resolve(process.argv[2]??path.join(root,'work/migration-reporting/native-release-2026-11-05/postgres'));
+assert.equal(path.dirname(fixture),path.join(root,'work/migration-reporting/native-release-2026-11-05'));assert(/^postgres(?:-v[2-9])?$/.test(path.basename(fixture)));
+const config=JSON.parse(fs.readFileSync(path.join(fixture,'synthetic-config.json')));assert.equal(config.port,55666+Number(path.basename(fixture).match(/v(\d)$/)?.[1]??1));assert.equal(config.host,'127.0.0.1');
 const {Pool}=require('pg'),ts=require('typescript'),release=require('../../lib/ai/ytubviral-native-release.json');
 const pgOptions={host:config.host,port:config.port,user:config.user,password:config.password,database:'neondb',ssl:{rejectUnauthorized:true,ca:fs.readFileSync(config.caFile)},max:2,connectionTimeoutMillis:2500,idleTimeoutMillis:500};
 const admin=new Pool({...pgOptions,database:'postgres'}),pools=[],calls=[],agents=[],results=[];let deployment,host,stage='fixture-schema',metadata=0,counts=0,generations=0,nativeOpened=0,nativeClosed=0,holdGeneration=false,generationEntered;
