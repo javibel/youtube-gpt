@@ -48,7 +48,7 @@ if ($NativeRelease) {
 }
 if ($AgentRelease) {
     if ($WithDatabase) { throw 'Original agent release checks use their new fixture runner' }
-    $guard = Join-Path $repo '../migration-reporting/native-agent-release-2026-11-05/fixture-guard.cjs'
+    $guard = Join-Path $repo '../migration-reporting/native-agent-release-2026-11-05-v2/fixture-guard.cjs'
     $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
     $entries = if ($kind -eq 'agent') { @('scripts/migration/task-factory.test.cjs','scripts/migration/operational-entry.test.cjs') } else { @('scripts/migration/task-factory.test.cjs','scripts/migration/shared-runtime.test.cjs','scripts/migration/operational-runtime.test.cjs') }
     Push-Location -LiteralPath $repo
