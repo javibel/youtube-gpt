@@ -35,7 +35,20 @@ function captureOperatingBudget(policy,bindings,policies){
  }
  if(!tasks.length)fail('configuration','Operating model task coverage is empty');
  const bound=new Set(tasks);Object.freeze(tasks);
- return Object.freeze({policy:captured,taskTypes:tasks,validateAdmission({taskType,snapshot,budgetId}={}){
+ return Object.freeze({policy:captured,taskTypes:tasks,async requestMaximum(tx,scope){
+  const keys=['runId','requestId','taskType','budgetId','maximumCostMicros','currency'];
+  if(!record(scope)||Object.keys(scope).sort().join(',')!==keys.sort().join(',')||typeof tx?.query!=='function'||!bound.has(scope.taskType)||scope.budgetId!==captured.budgetId||scope.currency!=='USD'||!['runId','requestId'].every(k=>typeof scope[k]==='string'&&/^[-A-Za-z0-9._:]{1,128}$/.test(scope[k]))||count(scope.maximumCostMicros)===null||scope.maximumCostMicros>captured.dailyLimitMicros)fail('permissions','Original operating request scope required');
+  // This read ONLY narrows an existing original request ceiling. The original
+  // admission transaction/unchanged DB guards remain the reservation authority.
+  // A repeated operation keeps its original ceiling/fingerprint even after
+  // settlement or a native day change; no run is adopted or redispatched here.
+  const previous=await tx.query('SELECT r.run_id,r.request_id,r.task_type,q.budget_id,q.amount_micros FROM ytv_ai_v1.runs r LEFT JOIN ytv_ai_v1.reservations q USING(run_id) WHERE r.run_id=$1 OR r.request_id=$2 LIMIT 2',[scope.runId,scope.requestId]);
+  if(previous.length){const p=previous[0],amount=count(p.amount_micros);if(previous.length!==1||p.run_id!==scope.runId||p.request_id!==scope.requestId||p.task_type!==scope.taskType||p.budget_id!==captured.budgetId||amount===null||amount>scope.maximumCostMicros)fail('uncertain','Original operating request ceiling unavailable');return amount;}
+  const rows=await tx.query("WITH d AS (SELECT clock_timestamp() AS instant), w AS (SELECT instant,date_trunc('day',instant AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid' AS begin_at,(date_trunc('day',instant AT TIME ZONE 'Europe/Madrid')+interval '1 day') AT TIME ZONE 'Europe/Madrid' AS end_at FROM d) SELECT b.budget_id,b.currency,b.limit_micros,b.reserved_micros,b.settled_micros,b.blocked,to_char(w.instant AT TIME ZONE 'Europe/Madrid','YYYY-MM') AS native_month,(SELECT coalesce(sum(CASE WHEN q.state='settled' THEN q.actual_micros ELSE q.amount_micros END),0) FROM ytv_ai_v1.reservations q JOIN ytv_ai_v1.runs r USING(run_id) WHERE q.budget_id=b.budget_id AND r.created_at>=w.begin_at AND r.created_at<w.end_at) AS daily_encumbered_micros FROM ytv_ai_v1.budgets b CROSS JOIN w WHERE b.budget_id=$1",[captured.budgetId]);
+  const b=rows[0],limit=count(b?.limit_micros),reserved=count(b?.reserved_micros),settled=count(b?.settled_micros),daily=count(b?.daily_encumbered_micros);
+  if(rows.length!==1||b.budget_id!==captured.budgetId||b.currency!=='USD'||b.blocked!==false||captured.budgetId!=='ytv-operating-models:'+b.native_month||limit===null||limit>captured.monthlyLimitMicros||reserved===null||settled===null||reserved+settled>limit||daily===null||daily>captured.dailyLimitMicros)fail('quota','Native operating headroom unavailable');
+  const maximum=Math.min(scope.maximumCostMicros,limit-reserved-settled,captured.dailyLimitMicros-daily);if(maximum<=0)fail('quota','Native operating headroom exhausted');return maximum;
+ },validateAdmission({taskType,snapshot,budgetId}={}){
   if(typeof taskType!=='string'||!record(snapshot)||typeof snapshot.providerId!=='string'||typeof budgetId!=='string')fail('permissions','Resolved operating admission required');
   const modelProvider=['anthropic','openai'].includes(snapshot.providerId);
   if(modelProvider?(!bound.has(taskType)||budgetId!==captured.budgetId):(bound.has(taskType)||budgetId.startsWith('ytv-operating-models:')))fail('permissions','Resolved admission differs from the approved model pool');

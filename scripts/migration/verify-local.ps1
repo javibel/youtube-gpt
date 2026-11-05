@@ -1,4 +1,4 @@
-param([switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
+param([switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -46,6 +46,26 @@ if ($NativeRelease) {
     } finally { Pop-Location }
     exit 0
 }
+if ($AgentRelease) {
+    if ($WithDatabase) { throw 'Original agent release checks use their new fixture runner' }
+    $guard = Join-Path $repo '../migration-reporting/native-agent-release-2026-11-05/fixture-guard.cjs'
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    $entries = if ($kind -eq 'agent') { @('scripts/migration/task-factory.test.cjs','scripts/migration/operational-entry.test.cjs') } else { @('scripts/migration/task-factory.test.cjs','scripts/migration/shared-runtime.test.cjs','scripts/migration/operational-runtime.test.cjs') }
+    Push-Location -LiteralPath $repo
+    try {
+        foreach ($entry in $entries) {
+            & $nodeExe --require $guard $entry
+            if ($LASTEXITCODE -ne 0) { throw "Strictly affected release program failed: $entry" }
+        }
+        if ($kind -eq 'web') {
+            & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+            if ($LASTEXITCODE -ne 0) { throw 'Current source type check failed' }
+        }
+        @{complete=$true;scope='original-agent-release-affected';kind=$kind;programs=($entries.Count+$(if($kind -eq 'web'){1}else{0}))}|ConvertTo-Json -Compress
+    } finally { Pop-Location }
+    exit 0
+}
+
 $scripts = (Get-Content -LiteralPath (Join-Path $repo 'package.json') -Raw | ConvertFrom-Json).scripts
 $suites = @('migration:check','migration:test','migration:test:contracts','migration:test:adapters','migration:test:reference','migration:test:boundary','migration:test:configuration')
 $suites += if ($kind -eq 'web') { 'migration:test:routes' } else { 'migration:test:coding-workers' }
