@@ -1,0 +1,1225 @@
+{
+  "format": "ytv-native-web-release-2026-11-05",
+  "projectId": "prj_rRP84PY8IrOqPiITmLcQjDbuKQl5",
+  "origin": "https://ytubviral.com",
+  "database": {
+    "host": "ep-noisy-scene-abzn9kdy.eu-west-2.aws.neon.tech",
+    "port": 5432,
+    "databaseName": "neondb",
+    "timeoutMs": 15000,
+    "maxConnections": 2
+  },
+  "taskCatalog": {
+    "agent.blog.metadata": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.blog.article": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.doctor": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.feature-monitor.diagnosis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.funnel-optimizer.analysis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.guardian": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.infra-optimizer.analysis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.manager": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.meta-optimizer.analysis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.quora-commenter": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.scout": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.seo-optimizer.diagnosis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.social-optimizer.analysis": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.watchdog": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.youtube-commenter": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.brand-bluesky-coach": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.persona-runner": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.followup": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "agent.gmail": {
+      "executor": "ai",
+      "runtimeIds": [
+        "agent"
+      ],
+      "capabilities": [
+        "text"
+      ]
+    },
+    "brand.gmail-reply": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "brand.image-generation": {
+      "executor": "ai",
+      "capabilities": [
+        "image_generation",
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "brand.image-prompt": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "brand.social-post": {
+      "executor": "ai",
+      "capabilities": [
+        "prompt_cache",
+        "text",
+        "web_search"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "brand.youtube-reply": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "calendar.suggestions": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "channel.coach": {
+      "executor": "ai",
+      "capabilities": [
+        "prompt_cache",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "content.bulk-generate": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "content.generate": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "content.storyboard": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "creator.daily-ideas": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "creator.trend-alerts": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "prompt_cache",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "public.seo-tip": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "public.thumbnail-review": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text",
+        "vision"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "site.daily-tip": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "support.chat": {
+      "executor": "ai",
+      "capabilities": [
+        "prompt_cache",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "thumbnail.background-prompt": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "thumbnail.image-prompt": {
+      "executor": "ai",
+      "capabilities": [
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.ab-title-suggestions": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.analytics-insight": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.audit-summary": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.best-time-tip": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.competitor-opportunities": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.optimization-tip": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.performance-prediction": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.retention-insights": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.revenue-insights": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.seo-tip": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.subscribers-insights": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.thumbnail-preview": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text",
+        "vision"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    },
+    "youtube.thumbnail-review": {
+      "executor": "ai",
+      "capabilities": [
+        "json",
+        "text"
+      ],
+      "runtimeIds": [
+        "web"
+      ]
+    }
+  },
+  "policies": {
+    "brand.gmail-reply": {
+      "serviceIds": [
+        "brand-agent"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 400,
+        "deadlineMs": 90000
+      }
+    },
+    "brand.image-generation": {
+      "serviceIds": [
+        "brand-agent"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 0,
+        "maxOutputTokens": 2048,
+        "deadlineMs": 30000
+      }
+    },
+    "brand.image-prompt": {
+      "serviceIds": [
+        "brand-agent"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 100,
+        "deadlineMs": 90000
+      }
+    },
+    "brand.social-post": {
+      "serviceIds": [
+        "brand-agent"
+      ],
+      "maxToolCalls": 3,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1200,
+        "deadlineMs": 90000
+      }
+    },
+    "brand.youtube-reply": {
+      "serviceIds": [
+        "brand-agent"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 150,
+        "deadlineMs": 90000
+      }
+    },
+    "calendar.suggestions": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1000,
+        "deadlineMs": 90000
+      }
+    },
+    "channel.coach": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 4096,
+        "deadlineMs": 90000
+      }
+    },
+    "content.bulk-generate": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 8192,
+        "deadlineMs": 90000
+      }
+    },
+    "content.generate": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 8192,
+        "deadlineMs": 90000
+      }
+    },
+    "content.storyboard": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1024,
+        "deadlineMs": 90000
+      }
+    },
+    "creator.daily-ideas": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 2000,
+        "deadlineMs": 90000
+      }
+    },
+    "creator.trend-alerts": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 600,
+        "deadlineMs": 90000
+      }
+    },
+    "public.seo-tip": {
+      "serviceIds": [
+        "public-seo"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 200,
+        "deadlineMs": 90000
+      }
+    },
+    "public.thumbnail-review": {
+      "serviceIds": [
+        "public-seo"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 250,
+        "deadlineMs": 90000
+      }
+    },
+    "site.daily-tip": {
+      "serviceIds": [
+        "morning-cron"
+      ],
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 300,
+        "deadlineMs": 90000
+      }
+    },
+    "support.chat": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 350,
+        "deadlineMs": 90000
+      }
+    },
+    "thumbnail.background-prompt": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 400,
+        "deadlineMs": 90000
+      }
+    },
+    "thumbnail.image-prompt": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 400,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.ab-title-suggestions": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 200,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.analytics-insight": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1200,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.audit-summary": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1200,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.best-time-tip": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 200,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.competitor-opportunities": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 800,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.optimization-tip": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 300,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.performance-prediction": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 600,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.retention-insights": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1000,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.revenue-insights": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 800,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.seo-tip": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1200,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.subscribers-insights": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 800,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.thumbnail-preview": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 600,
+        "deadlineMs": 90000
+      }
+    },
+    "youtube.thumbnail-review": {
+      "maxToolCalls": 0,
+      "budget": {
+        "currency": "USD",
+        "maxCostMicros": 3000000,
+        "maxOutputTokens": 1200,
+        "deadlineMs": 90000
+      }
+    }
+  },
+  "budgetBindings": {
+    "brand.gmail-reply": [
+      "ytv-operating-models:2026-11"
+    ],
+    "brand.image-generation": [],
+    "brand.image-prompt": [
+      "ytv-operating-models:2026-11"
+    ],
+    "brand.social-post": [
+      "ytv-operating-models:2026-11"
+    ],
+    "brand.youtube-reply": [
+      "ytv-operating-models:2026-11"
+    ],
+    "calendar.suggestions": [
+      "ytv-operating-models:2026-11"
+    ],
+    "channel.coach": [
+      "ytv-operating-models:2026-11"
+    ],
+    "content.bulk-generate": [
+      "ytv-operating-models:2026-11"
+    ],
+    "content.generate": [
+      "ytv-operating-models:2026-11"
+    ],
+    "content.storyboard": [
+      "ytv-operating-models:2026-11"
+    ],
+    "creator.daily-ideas": [
+      "ytv-operating-models:2026-11"
+    ],
+    "creator.trend-alerts": [
+      "ytv-operating-models:2026-11"
+    ],
+    "public.seo-tip": [
+      "ytv-operating-models:2026-11"
+    ],
+    "public.thumbnail-review": [
+      "ytv-operating-models:2026-11"
+    ],
+    "site.daily-tip": [
+      "ytv-operating-models:2026-11"
+    ],
+    "support.chat": [
+      "ytv-operating-models:2026-11"
+    ],
+    "thumbnail.background-prompt": [
+      "ytv-operating-models:2026-11"
+    ],
+    "thumbnail.image-prompt": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.ab-title-suggestions": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.analytics-insight": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.audit-summary": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.best-time-tip": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.competitor-opportunities": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.optimization-tip": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.performance-prediction": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.retention-insights": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.revenue-insights": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.seo-tip": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.subscribers-insights": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.thumbnail-preview": [
+      "ytv-operating-models:2026-11"
+    ],
+    "youtube.thumbnail-review": [
+      "ytv-operating-models:2026-11"
+    ]
+  },
+  "operatingBudget": {
+    "budgetId": "ytv-operating-models:2026-11",
+    "currency": "USD",
+    "monthlyLimitMicros": 30000000,
+    "dailyLimitMicros": 3000000,
+    "alertAtMonthlyMicros": 24000000,
+    "timezone": "Europe/Madrid"
+  },
+  "runtimes": [
+    {
+      "id": "agent",
+      "contractVersions": [
+        "1.0"
+      ],
+      "adapters": {
+        "anthropic": "messages-v1"
+      }
+    },
+    {
+      "id": "web",
+      "contractVersions": [
+        "1.0"
+      ],
+      "adapters": {
+        "anthropic": "messages-v1",
+        "ideogram": "brand-image-v1"
+      }
+    }
+  ],
+  "configuration": {
+    "contractVersion": "1.0",
+    "revision": "ytv-preserved-shared-9e31ddb9fec700a9",
+    "fallback": "none",
+    "activeProfile": "Preservado",
+    "profiles": {
+      "Preservado": {
+        "agent.blog.metadata": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.blog.article": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "agent.doctor": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-6"
+        },
+        "agent.feature-monitor.diagnosis": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "agent.funnel-optimizer.analysis": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-6"
+        },
+        "agent.guardian": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.infra-optimizer.analysis": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "agent.manager": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.meta-optimizer.analysis": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.quora-commenter": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.scout": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "agent.seo-optimizer.diagnosis": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.social-optimizer.analysis": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.watchdog": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.youtube-commenter": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.brand-bluesky-coach": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.persona-runner": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.followup": {
+          "providerId": "anthropic",
+          "model": "claude-opus-4-8"
+        },
+        "agent.gmail": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "brand.gmail-reply": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "brand.image-generation": {
+          "providerId": "ideogram",
+          "model": "ideogram-v3"
+        },
+        "brand.image-prompt": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "brand.social-post": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "brand.youtube-reply": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "calendar.suggestions": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "channel.coach": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "content.bulk-generate": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "content.generate": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "content.storyboard": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "creator.daily-ideas": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "creator.trend-alerts": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "public.seo-tip": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "public.thumbnail-review": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "site.daily-tip": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "support.chat": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "thumbnail.background-prompt": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "thumbnail.image-prompt": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.ab-title-suggestions": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.analytics-insight": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.audit-summary": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.best-time-tip": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.competitor-opportunities": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.optimization-tip": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.performance-prediction": {
+          "providerId": "anthropic",
+          "model": "claude-sonnet-4-6"
+        },
+        "youtube.retention-insights": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.revenue-insights": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.seo-tip": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.subscribers-insights": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.thumbnail-preview": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        },
+        "youtube.thumbnail-review": {
+          "providerId": "anthropic",
+          "model": "claude-haiku-4-5-20251001"
+        }
+      }
+    },
+    "exceptions": []
+  },
+  "modelIds": [
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-6",
+    "claude-opus-4-8",
+    "claude-sonnet-4-6"
+  ],
+  "models": {
+    "claude-haiku-4-5-20251001": {
+      "verified": true,
+      "executors": [
+        "ai"
+      ],
+      "capabilities": [
+        "text",
+        "json",
+        "prompt_cache",
+        "vision",
+        "web_search"
+      ]
+    },
+    "claude-opus-4-6": {
+      "verified": true,
+      "executors": [
+        "ai"
+      ],
+      "capabilities": [
+        "text",
+        "json",
+        "prompt_cache",
+        "vision",
+        "web_search"
+      ]
+    },
+    "claude-opus-4-8": {
+      "verified": true,
+      "executors": [
+        "ai"
+      ],
+      "capabilities": [
+        "text",
+        "json",
+        "prompt_cache",
+        "vision",
+        "web_search"
+      ]
+    },
+    "claude-sonnet-4-6": {
+      "verified": true,
+      "executors": [
+        "ai"
+      ],
+      "capabilities": [
+        "text",
+        "json",
+        "prompt_cache",
+        "vision",
+        "web_search"
+      ]
+    }
+  },
+  "pins": {
+    "requester": {
+      "peerId": "web:ytubviral-original-requester",
+      "keyId": "observer-web-ed25519-baed50b5-ce43-49d7-8095-25289d9c81fd",
+      "spkiSha256": "253e7241ee28733f266019eb81d0b4f63fd8b79917bcfe69b638105ab56cf6e5",
+      "spkiDerBase64": "MCowBQYDK2VwAyEAeoCyAATgkkch3nPTTYiQ1NbAqKHbeSTrV+wOYN8Fh2w="
+    },
+    "responder": {
+      "peerId": "agent:ytubviral-local-observer",
+      "keyId": "observer-agent-ed25519-9faae796-6d08-4784-93a5-ae2e06cdeaec",
+      "spkiSha256": "aba433e23fb559406984d7ab3310973f3ca4307c54b16882b476753959a0c809",
+      "spkiDerBase64": "MCowBQYDK2VwAyEA0DHAsZPm2s1odjVghZeeL+d/LDayAQuz5KrY2VKJGlM="
+    }
+  },
+  "observerPolicy": {
+    "runtimeId": "agent",
+    "providerId": "anthropic",
+    "credentialRef": "env:ANTHROPIC_API_KEY",
+    "models": [
+      "claude-haiku-4-5-20251001",
+      "claude-opus-4-6",
+      "claude-opus-4-8",
+      "claude-sonnet-4-6"
+    ],
+    "configurationRevision": "ytv-preserved-shared-9e31ddb9fec700a9",
+    "configurationDigest": "3fdb48c26d2c2e42a438ab2a12fc1d6f1e2fd5a530d5902472898cef8eeb99e7",
+    "requester": {
+      "peerId": "web:ytubviral-original-requester",
+      "keyId": "observer-web-ed25519-baed50b5-ce43-49d7-8095-25289d9c81fd"
+    },
+    "responder": {
+      "peerId": "agent:ytubviral-local-observer",
+      "keyId": "observer-agent-ed25519-9faae796-6d08-4784-93a5-ae2e06cdeaec"
+    }
+  }
+}

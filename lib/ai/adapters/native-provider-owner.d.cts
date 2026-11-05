@@ -24,7 +24,16 @@ export interface NativeWebProviderConfiguration {
  maxRequestBytes:number;
  maxResponseBytes:number;
 }
-export type NativeWebAnthropicConfiguration=NativeWebProviderConfiguration & {apiVersion:string;workspaceId:string|null};
+export interface NativeWebCountedReservationConfiguration {
+ revision:'anthropic-web-counted-double-plus4096-2026-11-05';
+ pricingSelections:readonly Readonly<{tariffRevision:'anthropic-public-2026-10-28';model:string;mode:'standard-global-direct';cacheWriteTtl:'none'|'5m'|'1h'}>[];
+ authorizeTokenCount(context:Readonly<NativeWebCredentialContext & {operation:'count-input-tokens';model:string;payloadDigest:string;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
+ authorizeCountedReservation(context:Readonly<NativeWebCredentialContext & {reservationRevision:string;model:string;payloadDigest:string;requestId:string;maxCostMicros:number;maxOutputTokens:number;maxToolCalls:number;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
+}
+export type NativeWebAnthropicConfiguration=Omit<NativeWebProviderConfiguration,'preflight'|'priceUsage'> & {apiVersion:string;workspaceId:string|null} & (
+ | {preflight:NativeWebProviderConfiguration['preflight'];priceUsage:NativeWebProviderConfiguration['priceUsage'];requestReservation?:never}
+ | {requestReservation:NativeWebCountedReservationConfiguration;preflight?:never;priceUsage?:never}
+);
 // The public wire currently supports only explicit key-scoped account routing.
 export type NativeWebOpenAIConfiguration=NativeWebProviderConfiguration & {organization:null;project:null};
 /** Explicitly provide one or both blocks; no provider is inferred or selected. */
@@ -49,3 +58,4 @@ export declare function createNativeWebProviderOwner(options:NativeWebProviderOw
  checkModelAvailability(context:Readonly<{runtimeId:'web';providerId:string;credentialRef:string;model:string;signal?:AbortSignal}>):Promise<Readonly<import('../model-metadata-readiness.cjs').ModelMetadataObservation>>;
  stop():Promise<Readonly<NativeWebProviderStop>>;
 }>;
+export declare const WEB_RESERVATION_REVISION:'anthropic-web-counted-double-plus4096-2026-11-05';

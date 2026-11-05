@@ -22,7 +22,7 @@ function loadBootstrap({clock,timers}={}){const file=path.resolve(__dirname,'../
 function entries(h,{shared={},bootstrap=loadBootstrap()}={}){
  const task=load('lib/ai/task-runtime.ts',{}, {globalThis:shared});
  const configuration=load('lib/ai/configuration-runtime.ts',{'server-only':{},'node:crypto':require('node:crypto'),'@/lib/auth-guards':{requireAdmin:async()=>h.state.actor?{ok:true,email:h.state.actor}:{ok:false}},'./configuration-service.cjs':require('../../lib/ai/configuration-service.cjs')},{globalThis:shared});
- const mocks={'server-only':{},'./shared-runtime-bootstrap.cjs':bootstrap,'./configuration-runtime':configuration};
+ const mocks={'server-only':{},'node:util':require('node:util'),'./shared-runtime-bootstrap.cjs':bootstrap,'./configuration-runtime':configuration};
  return {shared,task,configuration,first:load('lib/ai/shared-runtime.ts',mocks,{globalThis:shared}),second:load('lib/ai/shared-runtime.ts',mocks,{globalThis:shared})};
 }
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}}

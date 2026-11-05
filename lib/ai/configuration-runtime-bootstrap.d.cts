@@ -9,6 +9,7 @@ export interface AdministrativeConfigurationDependencies {
  getRuntimes: ConfigurationDependencies['getRuntimes'];
  checkCredential: (context:{runtimeId:string;credentialRef:string;providerId:string;signal?:AbortSignal})=>Promise<boolean>;
  checkModelAvailability: ConfigurationDependencies['checkModelAvailability'];
+ isTaskFunded?:ConfigurationDependencies['isTaskFunded'];
  timeoutMs: number;
  /** Internal startup observation selector; never an HTTP configuration field. */
  observationRuntimeId?:string;

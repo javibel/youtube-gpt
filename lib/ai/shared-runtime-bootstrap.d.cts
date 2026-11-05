@@ -3,7 +3,7 @@ import type { OpenAIRuntimeDependencies } from './openai-runtime-bootstrap.cjs';
 import type { Provider } from '../../contracts/ai/v1/core.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 import type { OperatingBudgetPolicy } from '../../contracts/ai/v1/operating-budget.cjs';
-export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity' | 'observationRuntimeId'> {
+export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurationDependencies, 'registry' | 'storageIdentity' | 'observationRuntimeId' | 'isTaskFunded'> {
  /** Original agent observers for full-catalog administration only; never web execution. */
  administrativeAgentReadiness?:Readonly<Pick<AdministrativeConfigurationDependencies,'checkCredential'|'checkModelAvailability'>>;
  adapters: Provider[];
@@ -18,6 +18,7 @@ export interface SharedRuntimeDependencies extends Omit<AdministrativeConfigurat
 export interface SharedRuntimeReadiness extends AdministrativeConfigurationReadiness {
  executorRole:string; budgetIds:readonly string[]; providerIds:readonly string[];
  modelMetadata:readonly import('./model-metadata-readiness.cjs').ModelMetadataObservation[];
+ unfundedTaskTypes?:readonly string[];
  operatingBudget?: Readonly<OperatingBudgetPolicy & {taskTypes:readonly string[];guardsVerified:true;nativeMonth:string}>;
 }
 export declare function createSharedRuntimeBootstrap(options:SharedRuntimeDependencies):Readonly<{

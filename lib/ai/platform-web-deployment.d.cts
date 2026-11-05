@@ -18,7 +18,9 @@ export interface PlatformWebDeploymentOptions {
  database:Omit<OperationalWebDeploymentOptions['database'],'getPassword'>;
  runtime:OperationalWebDeploymentOptions['runtime'];
  authorizeRoleAccess(request:Readonly<{kind:'prepare-platform-web-deployment'|'read-platform-role-password';surface:'web';host:string;port:number;databaseName:string;roles?:readonly string[];role?:string;user?:string;signal:AbortSignal}>):Promise<boolean>|boolean;
- sealAndDrainIngress(request:{signal:AbortSignal}):Promise<{drained:boolean}>|{drained:boolean};
+ sealAndDrainIngress?:(request:{signal:AbortSignal})=>Promise<{drained:boolean}>|{drained:boolean};
+ /** Mutually exclusive with external ingress. Seals/observes this SAME owner's original AI task factory;does not claim managed HTTP server closure. */
+ ownedTaskIngress?:true;
  prepareTimeoutMs:number;
  stopTimeoutMs:number;
  observerSigning?:OriginalWebObserverSigningCapability;

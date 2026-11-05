@@ -18,7 +18,7 @@ export declare function registerOriginalPlatformWebHostFactory(factory:OriginalP
 export declare function getOriginalPlatformWebHostFactory():Readonly<OriginalPlatformWebHostRegistration>|undefined;
 /** Permanently seals registration, including a missing or preprovided path. */
 export declare function beginOriginalPlatformWebHostPreparation():Readonly<OriginalPlatformWebHostRegistration>|undefined;
-type NativeProviderSelection<T>=Omit<T,'credentialRef'|'readCredential'|'resolveAddress'>;
+type NativeProviderSelection<T>=T extends unknown?Omit<T,'credentialRef'|'readCredential'|'resolveAddress'>:never;
 export type OriginalNativeWebProviderSelection={stopTimeoutMs:number}&(
  |{anthropic:NativeProviderSelection<NativeWebAnthropicConfiguration>;openai?:never}
  |{anthropic?:never;openai:NativeProviderSelection<NativeWebOpenAIConfiguration>}

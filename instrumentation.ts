@@ -16,6 +16,8 @@ export async function register() {
     throw new Error('Fixture and operational startup cannot share a process');
   }
   if (nodeRuntime && operationalRequested) {
+    const { registerYTubViralNativeRelease } = await import('./lib/ai/ytubviral-native-release.cjs');
+    registerYTubViralNativeRelease();
     const { prepareConfiguredPlatformWebHost } = await import('./lib/ai/platform-web-host');
     await prepareConfiguredPlatformWebHost();
   }

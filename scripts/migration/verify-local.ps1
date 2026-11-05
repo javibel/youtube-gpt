@@ -1,4 +1,4 @@
-param([switch]$WithDatabase)
+param([switch]$WithDatabase,[switch]$NativeRelease)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -6,6 +6,28 @@ $repoName = Split-Path $repo -Leaf
 if ($repoName -notin @('migration-web','migration-agent')) { throw 'An independent migration copy is required' }
 $kind = if ($repoName -eq 'migration-web') { 'web' } else { 'agent' }
 if ($WithDatabase -and $kind -ne 'web') { throw 'Database/build verification belongs to the isolated web copy' }
+if ($NativeRelease) {
+    if ($WithDatabase -or $kind -ne 'web') { throw 'Native release verification requires its separate owned fixture runner' }
+    $guard = Join-Path $repo '../migration-reporting/native-release-2026-11-05/fixture-guard.cjs'
+    if (-not (Test-Path -LiteralPath $guard)) { throw 'Native release fixture guard required' }
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    # Only programs affected by this release bootstrap/provider/storage seam.
+    # No unchanged pilot, build, old PostgreSQL fixture or broad regression run.
+    $entries = @('scripts/migration/anthropic-adapter.test.cjs','scripts/migration/anthropic-http.test.cjs','scripts/migration/anthropic-https.test.cjs','scripts/migration/configuration-service.test.cjs','scripts/migration/configuration-bootstrap.test.cjs','scripts/migration/shared-runtime.test.cjs','scripts/migration/operational-runtime.test.cjs','scripts/migration/platform-model-readiness.test.cjs','scripts/migration/native-host-configuration.test.cjs','scripts/migration/native-release-functional.test.cjs')
+    Push-Location -LiteralPath $repo
+    try {
+        foreach ($entry in $entries) {
+            & $nodeExe --require $guard $entry
+            $originalExit = $LASTEXITCODE
+            if ($originalExit -ne 0) { throw "Affected original program failed: $entry; exit=$originalExit" }
+        }
+        & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+        $originalExit = $LASTEXITCODE
+        if ($originalExit -ne 0) { throw "Current source type check failed; exit=$originalExit" }
+        Write-Output '{"complete":true,"scope":"native-release-affected-flow","programs":11}'
+    } finally { Pop-Location }
+    exit 0
+}
 $scripts = (Get-Content -LiteralPath (Join-Path $repo 'package.json') -Raw | ConvertFrom-Json).scripts
 $suites = @('migration:check','migration:test','migration:test:contracts','migration:test:adapters','migration:test:reference','migration:test:boundary','migration:test:configuration')
 $suites += if ($kind -eq 'web') { 'migration:test:routes' } else { 'migration:test:coding-workers' }

@@ -8,5 +8,5 @@ export interface OperationalWebOptions extends Omit<SharedRuntimeDependencies,'r
 }
 export declare function createOperationalWebComposition(options:OperationalWebOptions):Readonly<{
  dependencies:SharedRuntimeDependencies;
- prepare(options?:{signal?:AbortSignal}):Promise<Readonly<{factory:unknown;configurationDependencies:unknown;readiness:Readonly<SharedRuntimeReadiness>}>>;
+ prepare(options?:{signal?:AbortSignal}):ReturnType<ReturnType<typeof import('./shared-runtime-bootstrap.cjs').createSharedRuntimeBootstrap>['prepare']>;
 }>;

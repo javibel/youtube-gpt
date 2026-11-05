@@ -39,6 +39,6 @@ export function provideOperationalWebDeployment(deployment:Deployment,{signal}:{
  if(typeof deployment?.prepare!=='function'||typeof deployment.assertOpen!=='function')throw new Error('Original web deployment owner required');
  const prepare=deployment.prepare.bind(deployment),dependencies=deployment.dependencies,checkBeforeInstall=deployment.assertOpen.bind(deployment);
  let original:Promise<Readonly<SharedRuntimeReadiness>>|undefined;
- const install=()=>original??=Promise.resolve().then(async()=>{await prepare({signal});checkBeforeInstall();return installSharedRuntime(dependencies,{signal,checkBeforeInstall});});
+ const install=()=>original??=Promise.resolve().then(async()=>{const prepared=await prepare({signal});checkBeforeInstall();return installSharedRuntime(dependencies,{signal,checkBeforeInstall,prepared});});
  Object.defineProperty(server,key,{value:Object.freeze({options:deployment,signal,install}),configurable:false,writable:false});
 }

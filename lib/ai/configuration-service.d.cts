@@ -9,6 +9,8 @@ export interface ConfigurationDependencies {
   getRuntimes: () => Promise<{ id: string; contractVersions: string[]; adapters: Record<string, string> }[]>;
   checkCredential: (context: { runtimeId: string; credentialRef: string; providerId: string }) => Promise<boolean>;
   checkModelAvailability: import('./model-metadata-readiness.cjs').ModelMetadataChecker;
+  /** Original server funding policy;unfunded assignments stay visible but unavailable and receive no credential/model observation. */
+  isTaskFunded?: (taskType:string)=>boolean;
   clock?: () => number;
   previewTtlMs?: number;
 }
