@@ -20,6 +20,16 @@ function createObserverLedger({database,retain}){
   take(requestId,{responder,signal,now}){return run(async tx=>{const rows=await tx.query("UPDATE ytv_ai_v1.observer_requests SET state='delivered' WHERE request_id=$1 AND responder=$2 AND state='pending' AND deadline_ms>$3 RETURNING request_wire",[requestId,responder,now]);if(rows.length!==1)fail('uncertain');return rows[0].request_wire;},signal);},
   insertClaim:async({transaction:tx,context,claim})=>tx.query("UPDATE ytv_ai_v1.observer_requests SET execution_claim=$1::jsonb WHERE request_id=$2 AND nonce=$3 AND request_digest=$4 AND state='delivered' AND execution_claim IS NULL AND deadline_ms>floor(extract(epoch from clock_timestamp())*1000) RETURNING request_id AS \"requestId\",nonce,request_digest AS \"requestDigest\",execution_claim->>'bindingDigest' AS \"bindingDigest\"",[JSON.stringify(claim),context.requestId,context.nonce,context.requestDigest]),
   request(requestId,{signal}){return run(async tx=>{const rows=await tx.query('SELECT request_wire,state,execution_claim FROM ytv_ai_v1.observer_requests WHERE request_id=$1',[requestId]);if(rows.length!==1)fail('permissions');return rows[0];},signal);},
+  observation(binding,{actor,responder,signal,now}){
+   if(typeof actor!=='string'||!/^admin_[a-f0-9]{64}$/.test(actor))fail('permissions');
+   // Bounded read in the SAME native transaction/retention path. A duplicate
+   // live observation is ambiguous; never silently pick the newest row.
+   return run(async tx=>{
+    // Same coordinator used by the public control store's activation/admission.
+    await tx.query("SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('ytv_ai_v1:active'))");
+    return tx.query("SELECT q.request_id,q.nonce,q.actor,q.responder,q.state,q.request_wire,q.request_digest,q.execution_claim,q.deadline_ms,r.result_wire,a.revision AS active_revision,c.payload AS active_payload FROM ytv_ai_v1.observer_requests q JOIN ytv_ai_v1.observer_results r USING(request_id) CROSS JOIN ytv_ai_v1.active_revision a JOIN ytv_ai_v1.revisions c ON c.revision=a.revision WHERE a.singleton=true AND q.actor=$1 AND q.responder=$2 AND q.state='complete' AND q.deadline_ms>$3 AND q.request_wire::jsonb->>'configurationRevision'=$4 AND q.request_wire::jsonb->>'configurationDigest'=$5 AND q.request_wire::jsonb->>'operation'=$6 AND (q.request_wire::jsonb->>'model') IS NOT DISTINCT FROM $7::text ORDER BY q.request_id LIMIT 2",[actor,responder,now,binding.configurationRevision,binding.configurationDigest,binding.operation,binding.model]);
+   },signal);
+  },
   result(requestId,wire,{signal,now}){return run(async tx=>{const rows=await tx.query("UPDATE ytv_ai_v1.observer_requests SET state='complete' WHERE request_id=$1 AND state='delivered' AND execution_claim IS NOT NULL AND deadline_ms>$2 RETURNING request_id",[requestId,now]);if(rows.length!==1)fail('uncertain');await tx.query('INSERT INTO ytv_ai_v1.observer_results(request_id,result_wire) VALUES($1,$2)',[requestId,wire]);return{requestId,state:'complete'};},signal);}
  });
 }

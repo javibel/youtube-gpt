@@ -1,4 +1,4 @@
-param([switch]$WithDatabase,[switch]$NativeRelease)
+param([switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -6,6 +6,24 @@ $repoName = Split-Path $repo -Leaf
 if ($repoName -notin @('migration-web','migration-agent')) { throw 'An independent migration copy is required' }
 $kind = if ($repoName -eq 'migration-web') { 'web' } else { 'agent' }
 if ($WithDatabase -and $kind -ne 'web') { throw 'Database/build verification belongs to the isolated web copy' }
+if ($ObserverReader) {
+    if ($WithDatabase -or $NativeRelease -or $kind -ne 'web') { throw 'Original observation-reader verification requires its own isolated runner' }
+    $guard = Join-Path $repo '../migration-reporting/administrative-reader-2026-11-05/fixture-guard.cjs'
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    Push-Location -LiteralPath $repo
+    try {
+        foreach ($entry in @('scripts/migration/configuration-service.test.cjs','scripts/migration/configuration-bootstrap.test.cjs','scripts/migration/shared-runtime.test.cjs','scripts/migration/operational-runtime.test.cjs')) {
+            & $nodeExe --require $guard $entry
+            $originalExit = $LASTEXITCODE
+            if ($originalExit -ne 0) { throw "Affected original program failed: $entry; exit=$originalExit" }
+        }
+        & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+        $originalExit = $LASTEXITCODE
+        if ($originalExit -ne 0) { throw "Current source type check failed; exit=$originalExit" }
+        Write-Output '{"complete":true,"scope":"observer-reader-affected-authentication-and-control","programs":5}'
+    } finally { Pop-Location }
+    exit 0
+}
 if ($NativeRelease) {
     if ($WithDatabase -or $kind -ne 'web') { throw 'Native release verification requires its separate owned fixture runner' }
     $guard = Join-Path $repo '../migration-reporting/native-release-2026-11-05/fixture-guard.cjs'

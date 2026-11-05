@@ -17,7 +17,8 @@ export async function register() {
   }
   if (nodeRuntime && operationalRequested) {
     const { registerYTubViralNativeRelease } = await import('./lib/ai/ytubviral-native-release.cjs');
-    registerYTubViralNativeRelease();
+    const { getAuthenticatedConfigurationActor } = await import('./lib/ai/configuration-runtime');
+    registerYTubViralNativeRelease({getAdministrativeActor:getAuthenticatedConfigurationActor});
     const { prepareConfiguredPlatformWebHost } = await import('./lib/ai/platform-web-host');
     await prepareConfiguredPlatformWebHost();
   }
