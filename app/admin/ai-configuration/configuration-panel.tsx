@@ -5,8 +5,8 @@ const button = 'rounded-lg border px-4 py-2 text-sm disabled:opacity-40';
 
 export default function ConfigurationPanel() {
   const { data: session, status } = useSession();
-  const { configuration, profile, reason, preview, attempt, checked, previousRevision, busy, message, error,
-    refresh, prepare, activate, setProfile, setReason } = useConfigurationPanel(session?.user?.id, session?.user?.email, status);
+  const { configuration, profile, reason, preview, attempt, checked, previousRevision, busy, message, error, observationStarted, observationRequestIds,
+    refresh, prepare, activate, createObservations, setProfile, setReason } = useConfigurationPanel(session?.user?.id, session?.user?.email, status);
 
   return <section className="space-y-5" aria-busy={busy}>
     {error && <p role="alert" className="rounded-lg border border-red-400 p-4">{error}</p>}
@@ -29,6 +29,15 @@ export default function ConfigurationPanel() {
           <button className={button} disabled={busy || !!attempt || !reason.trim() || profile === configuration.activeProfile} onClick={() => prepare()}>Revisar cambio</button>
           {previousRevision && <button className={button} disabled={busy || !!attempt || !reason.trim()} onClick={() => prepare(true)}>Revisar vuelta al perfil anterior</button>}
         </div>
+      </div>
+      <div className="yv-card p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Comprobación del agente</h2>
+        <p>Crea las cinco comprobaciones de credencial y modelos para que el agente confirme su disponibilidad. Caducan a los cinco minutos.</p>
+        <button className={button} disabled={busy || observationStarted} onClick={createObservations}>Preparar comprobación del agente</button>
+        {observationRequestIds.length > 0 && <div>
+          <p>Identificadores para el enrolamiento. Crear las comprobaciones no activa el agente.</p>
+          <ul className="mt-2 space-y-1" aria-label="Comprobaciones del agente">{observationRequestIds.map(id => <li key={id}><code className="select-all break-all">{id}</code></li>)}</ul>
+        </div>}
       </div>
       {preview && <div className="yv-card p-6 space-y-4">
         <h2 className="text-lg font-semibold">Previsualización: {preview.activeProfile}</h2>

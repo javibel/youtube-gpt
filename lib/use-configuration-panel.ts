@@ -11,7 +11,8 @@ const endpoint = '/api/admin/ai-configuration';
 const uncertain = 'No se pudo confirmar la activación. Consulta el estado antes de intentarlo de nuevo.';
 const initial = () => ({ configuration: null as Configuration | null, profile: '', reason: '', preview: null as Preview | null,
   attempt: null as Preview | null, checked: false, previousRevision: null as string | null,
-  readBusy: false, commandBusy: false, loaded: false, message: '', error: '' });
+  readBusy: false, commandBusy: false, loaded: false, message: '', error: '',
+  observationStarted: false, observationRequestIds: [] as string[] });
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const label = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 1000;
 const selection = (v: unknown) => record(v) && label(v.providerId) && label(v.model);
@@ -75,7 +76,7 @@ export function useConfigurationPanel(userId: string | null | undefined, email: 
     return flight.promise;
   }, [scope,current,retireRead,update]);
 
-  const run = useCallback(async (body: object, decode: (value: unknown) => void, activating = false) => {
+  const run = useCallback(async (body: object, decode: (value: unknown) => void, activating = false, commandEndpoint = endpoint, failureMessage?: string) => {
     if (!current()) return;
     if (scope.command) return scope.command.promise;
     retireRead(); update(v => ({ ...v, readBusy: false, commandBusy: true, error: '' }));
@@ -83,7 +84,7 @@ export function useConfigurationPanel(userId: string | null | undefined, email: 
     let acknowledged = false;
     flight.promise = (async () => {
       try {
-        const response = await flight.waiting.wait(fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        const response = await flight.waiting.wait(fetch(commandEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body), signal: flight.waiting.signal }));
         if (!current()) return;
         const value: unknown = await flight.waiting.wait(response.json());
@@ -91,7 +92,7 @@ export function useConfigurationPanel(userId: string | null | undefined, email: 
         if (!response.ok) throw Error('Command unavailable');
         decode(value); acknowledged = activating;
       } catch {
-        if (current()) update(v => ({ ...v, error: activating ? uncertain : 'No se pudo previsualizar el cambio. Revisa el estado antes de repetirlo.' }));
+        if (current()) update(v => ({ ...v, error: failureMessage ?? (activating ? uncertain : 'No se pudo previsualizar el cambio. Revisa el estado antes de repetirlo.') }));
       } finally {
         flight.waiting.finish(); if (scope.command === flight) scope.command = null;
         if (current()) update(v => ({ ...v, commandBusy: false }));
@@ -130,6 +131,20 @@ export function useConfigurationPanel(userId: string | null | undefined, email: 
     }, true);
   }, [scope,current,update,run]);
 
+  const createObservations = useCallback(async () => {
+    if (!current() || scope.command || scope.read || !scope.state.configuration || scope.state.observationStarted) return;
+    // Mark before dispatch. A deadline, missing acknowledgement or refresh never permits another bundle.
+    update(v => ({ ...v, observationStarted: true, message: 'Creación de comprobaciones pendiente de confirmación.' }));
+    return run({ action: 'create' }, value => {
+      if (!record(value) || Object.keys(value).join() !== 'requests' || !Array.isArray(value.requests) || value.requests.length !== 5
+        || !value.requests.every(row => record(row) && Object.keys(row).sort().join() === 'requestId,state'
+          && typeof row.requestId === 'string' && /^obs_[A-Za-z0-9_-]{16,96}$/.test(row.requestId) && row.state === 'pending')) throw Error('Invalid observation acknowledgement');
+      const ids = value.requests.map(row => row.requestId as string);
+      if (new Set(ids).size !== 5) throw Error('Ambiguous observation acknowledgement');
+      update(v => ({ ...v, observationRequestIds: ids, message: 'Comprobaciones creadas. El agente aún debe completarlas.' }));
+    }, false, '/api/admin/ai-observations', 'No se pudo confirmar la creación de las comprobaciones. No repitas la solicitud ni recargues para crear otra; conserva la incertidumbre y revisa la petición original.');
+  }, [scope,current,update,run]);
+
   useEffect(() => {
     scope.active = true; void read();
     return () => {
@@ -149,5 +164,5 @@ export function useConfigurationPanel(userId: string | null | undefined, email: 
   const busy = view.readBusy || view.commandBusy || status === 'loading' || (current() && !view.loaded && !view.error);
   const edit = (field: 'profile' | 'reason', value: string) => { if (current() && !scope.read && !scope.command && !scope.state.attempt) update(v => ({ ...v, [field]: value, preview: null })); };
   return { ...view, busy, error: view.error || (status === 'unauthenticated' || (status === 'authenticated' && (!userId || !email)) ? 'Necesitas una sesión administrativa para consultar el estado.' : ''),
-    refresh: () => read(true), prepare, activate, setProfile: (value: string) => edit('profile', value), setReason: (value: string) => edit('reason', value) };
+    refresh: () => read(true), prepare, activate, createObservations, setProfile: (value: string) => edit('profile', value), setReason: (value: string) => edit('reason', value) };
 }
