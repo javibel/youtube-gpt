@@ -31,7 +31,7 @@ function createWait(signal?: AbortSignal) {
   };
 }
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const wait = createWait(request?.signal);
   try {
     const gate = await wait.run(() => requireAdmin());

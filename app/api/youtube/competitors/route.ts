@@ -10,7 +10,7 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 
 
 // GET: list tracked competitors with latest snapshots
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const deadline = performance.now() + 25_000;
   let retired = false, rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });

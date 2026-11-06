@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 // ── GET: return cached analysis ────────────────────────────────────────────
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   // Retire this HTTP wait without cancelling, replacing or retrying the original read.
   const deadline = performance.now() + 25_000;
   let retired = false, rejectWait!: (error: Error) => void;
@@ -76,7 +76,7 @@ export async function GET(request?: Request) {
 }
 
 // POST — original bounded eligibility only; producer admission remains closed.
-export async function POST(request?: Request) {
+export async function POST(request: Request) {
   const fixture = await bestTimeFixturePost(request);
   if (fixture) return fixture;
   const deadline = performance.now() + 25_000;

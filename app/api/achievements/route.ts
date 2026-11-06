@@ -3,7 +3,7 @@ import { authorizeNativeAchievements, checkNativeAchievements, produceNativeAchi
 import type { NativeAchievementsOriginal } from '@/lib/achievements-native-authorization';
 
 export const maxDuration = 60;
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const deadline = performance.now() + 55_000;
   let retired=false,rejectWait!: (error: Error)=>void;
   const stopped=new Promise<never>((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});

@@ -8,7 +8,7 @@ export const maxDuration = 60;
 import { decodeTeamRead } from '@/lib/team-read-contract';
 
 // GET — get user's team (if any)
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const deadline = performance.now() + 25_000;
   let retired = false, rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });

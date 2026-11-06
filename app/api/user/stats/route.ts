@@ -27,7 +27,7 @@ function calcStreak(dates: string[]): number {
   return streak;
 }
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   // This retires the HTTP wait. The original read is not cancelled or retried.
   const deadline = performance.now() + 25_000;
   let retired = false, rejectWait!: (error: Error) => void;
