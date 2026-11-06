@@ -1,6 +1,5 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { requireAdmin } from '@/lib/auth-guards';
 import { createConfigurationService, type ConfigurationDependencies, type ConfigurationService } from './configuration-service.cjs';
 import type { TaskIdentity, MessagesTask } from './task-runtime';
 
@@ -11,6 +10,10 @@ const shared = globalThis as typeof globalThis & { [runtimeKey]?: Readonly<Confi
 // Original session-derived actor, shared by configuration control and its
 // agent observation reader. Never supplied by an HTTP body or release JSON.
 export async function getAuthenticatedConfigurationActor():Promise<string|null> {
+  // Original registration precedes environment normalization. Import the native
+  // cookie reader inside the real request so it shares the issuer's finalized
+  // secret bytes; no refresh, backfill or alternative principal is introduced.
+  const { requireAdmin } = await import('@/lib/auth-guards');
   const gate=await requireAdmin();
   return gate.ok ? 'admin_'+createHash('sha256').update(gate.email).digest('hex') : null;
 }
