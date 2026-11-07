@@ -19,6 +19,17 @@ function fixture(){
 }
 async function test(name,fn){const number=++testNumber;if(selected&&!selected.includes(number))return;try{await fn();results.push({number,name,status:'PASS'});}catch(error){results.push({number,name,status:'FAIL',error:error.stack});}}
 (async()=>{
+ await test('new signing window cannot bypass a still-pending original signature after borrower cancellation',async()=>{
+  const f=fixture(),gate=defer();f.original.sign=async context=>{f.state.sign.push(context);await gate.promise;return Buffer.alloc(64).toString('base64url');};f.bind();const owner=f.construct(),pending=owner.signObserverRequest(f.request(0));void pending.catch(()=>{});for(let n=0;n<100&&!f.state.sign.length;n++)await new Promise(r=>setImmediate(r));assert.equal(f.state.sign.length,1);f.pending.now=1760000030001;
+  await assert.rejects(async()=>owner.signObserverRequest({...f.request(1),issuedAt:f.pending.now,deadline:f.pending.now+30000}));assert.equal(f.state.sign.length,1);gate.resolve();await assert.rejects(pending);assert.equal((await owner.close()).drained,true);
+ });
+
+ await test('five new requests in a later expired window use the same signer owner while all previous ids and nonces stay forbidden',async()=>{
+  const f=fixture();f.bind();const owner=f.construct();for(let n=0;n<5;n++)await owner.signObserverRequest(f.request(n));await assert.rejects(async()=>owner.signObserverRequest(f.request(99)));
+  f.pending.now=1760000030001;for(let n=5;n<10;n++)await owner.signObserverRequest({...f.request(n),issuedAt:f.pending.now,deadline:f.pending.now+30000});assert.equal(f.state.sign.length,10);
+  f.pending.now+=30001;await assert.rejects(async()=>owner.signObserverRequest({...f.request(0),issuedAt:f.pending.now,deadline:f.pending.now+30000}));await assert.rejects(async()=>owner.signObserverRequest({...f.request(90),nonce:f.request(1).nonce,issuedAt:f.pending.now,deadline:f.pending.now+30000}));assert.equal(f.state.sign.length,10);assert.equal((await owner.close()).drained,true);
+ });
+
  await test('inert original registration/capture;one exact canonical snapshot andsame original context/functions through permission andsigning',async()=>{
   const f=fixture();f.bind();assert.equal(f.state.bindings,0);assert.equal(f.state.authorize.length,0);assert.equal(f.state.sign.length,0);assert.equal(f.state.stops,0);f.original.sign=()=>assert.fail('Late replacement isnot original');const owner=f.construct();assert.equal(f.state.authorize.length,0);assert.equal(f.state.sign.length,0);const request=f.request(),originalNonce=request.nonce,result=owner.signObserverRequest(request);request.nonce='c'.repeat(64);request.requester.peerId='changed-after-call';const signed=await result,context=f.state.authorize[0];assert.strictEqual(context,f.state.sign[0]);assert.equal(context.kind,'sign-original-observer-request-v1');assert.equal(context.purpose,'agent-readiness-observation');assert.equal(context.request.nonce,originalNonce);assert(Object.isFrozen(context)&&Object.isFrozen(context.request)&&Object.isFrozen(context.request.requester));assert.equal(context.identity.spkiSha256,'b'.repeat(64));assert.equal(context.signal.aborted,false);assert.equal(signed.scope,'signature-only-no-authority');assert.equal(signed.trust,'untrusted-observer-data');assert.equal(JSON.parse(signed.wire).nonce,originalNonce);assert.equal(JSON.parse(signed.wire).requester.peerId,'synthetic-web');assert.equal((await owner.close()).drained,true);assert.equal(f.state.stops,1);assert.equal(f.state.nativeRetired,1);assert.equal(f.state.closed,1);
  });

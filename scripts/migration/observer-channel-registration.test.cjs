@@ -6,7 +6,7 @@ function fixture({channel=true,queryGate,signingAllowed=true,malformedChannel}={
  const web=crypto.generateKeyPairSync('ed25519'),agent=crypto.generateKeyPairSync('ed25519'),state={bindings:0,prepares:0,signatures:0,auth:0,queries:0,closeCalls:0,nativeSignals:[],enrollment:0};
  const policy={runtimeId:'agent',providerId:'anthropic',credentialRef:'synthetic:credential',models:['synthetic-model'],configurationRevision:'synthetic-v1',configurationDigest:'a'.repeat(64),requester:{peerId:'web:synthetic',keyId:'web:key'},responder:{peerId:'agent:synthetic',keyId:'agent:key'}};
  const pins={requester:{...policy.requester,publicKey:web.publicKey,spkiSha256:hash(web.publicKey.export({type:'spki',format:'der'}))},responder:{...policy.responder,publicKey:agent.publicKey,spkiSha256:hash(agent.publicKey.export({type:'spki',format:'der'}))}};
- const source={policy,pins,clock(){assert.equal(this,source);return new Date();},verifyAgentOriginal(){assert.equal(this,source);state.enrollment++;return true;}};
+ const source={policy,pins,clock(){assert.equal(this,source);return new Date(state.now??Date.now());},verifyAgentOriginal(){assert.equal(this,source);state.enrollment++;return true;}};
  const database={role:'executor',controlSchema:'ytv_ai_v1',transaction:async()=>{throw Error('Legacy not allowed');},transactionOriginal(work,{signal}){
   state.nativeSignals.push(signal);let rejectCancel;
   const cancelled=new Promise((_,reject)=>rejectCancel=reject),abort=()=>rejectCancel(Error('synthetic-native-borrower-aborted'));signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
@@ -15,7 +15,7 @@ function fixture({channel=true,queryGate,signingAllowed=true,malformedChannel}={
   return Object.freeze({result,settled:original.then(()=>{},()=>{})});
  }};
  const input={deployment:{database:{host:'synthetic.invalid',port:5432,databaseName:'synthetic',timeoutMs:1000,maxConnections:1},runtime:{taskCatalog:{},policies:{},budgetBindings:{},operatingBudget:{},authorize:()=>false},authorizeRoleAccess:()=>false,sealAndDrainIngress:async()=>({drained:true}),prepareTimeoutMs:100,stopTimeoutMs:25,
- observerSigning:{policy,identity:{...policy.requester,spkiSha256:pins.requester.spkiSha256},clock:()=>new Date(),authorizeSigning:async()=>{state.auth++;return signingAllowed;},sign:async c=>{state.signatures++;return crypto.sign(null,Buffer.from(c.signingText),web.privateKey).toString('base64url');},stop:async()=>({drained:true,uncertain:false})},...(channel?{observerChannel:malformedChannel??source}:{})},
+ observerSigning:{policy,identity:{...policy.requester,spkiSha256:pins.requester.spkiSha256},clock:()=>new Date(state.now??Date.now()),authorizeSigning:async()=>{state.auth++;return signingAllowed;},sign:async c=>{state.signatures++;return crypto.sign(null,Buffer.from(c.signingText),web.privateKey).toString('base64url');},stop:async()=>({drained:true,uncertain:false})},...(channel?{observerChannel:malformedChannel??source}:{})},
  providers:{stopTimeoutMs:25,anthropic:{models:{'synthetic-model':{verified:true,executors:['ai'],capabilities:['text']}},preflight:async()=>{},priceUsage:()=>{},credentialTimeoutMs:100,callTimeoutMs:100,maxRequestBytes:1024,maxResponseBytes:1024,apiVersion:'2023-06-01',workspaceId:null}},authorizeCredentialAccess:async()=>false,bindingStopTimeoutMs:25};
  const registrationFile=path.join(repo,'lib/ai/platform-web-host-registration.cjs'),registration={exports:{}},r=requireFrom(registrationFile);
  vm.runInNewContext(fs.readFileSync(registrationFile,'utf8'),{module:registration,exports:registration.exports,require:r,AbortController,AbortSignal,Object,Array,JSON,Reflect},{filename:registrationFile});
@@ -29,11 +29,21 @@ function fixture({channel=true,queryGate,signingAllowed=true,malformedChannel}={
  return{state,owner,service:installed,options,source,policy,pins};
 }
 function requireFrom(file){return createRequire(file);}
-async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',code:typeof error?.code==='string'?error.code:String(error?.name||'FIXED_REGISTRATION_FAILURE'),frames:typeof error?.stack==='string'?error.stack.split('\n').slice(1,4):[]});}}
+async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',message:error?.message,code:typeof error?.code==='string'?error.code:String(error?.name||'FIXED_REGISTRATION_FAILURE'),frames:typeof error?.stack==='string'?error.stack.split('\n').slice(1,4):[]});}}
 (async()=>{
  await test('optional original registration reaches actual platform constructor and installs same-owner channel without preparing runtime',async()=>{
   const f=fixture();assert(f.options.observerChannel);assert(f.service);assert.equal(f.state.bindings,1);assert.equal(f.state.prepares,0);assert.equal(f.state.auth,0);assert.equal(f.state.queries,0);
   const done=await f.service.create({actor:'admin_'+'a'.repeat(64),signal:new AbortController().signal});assert.equal(done.length,2);assert.equal(f.state.signatures,2);assert.equal(f.state.queries,2);assert.equal((await f.owner.close()).drained,true);
+ });
+ await test('same original warm owner admits a new explicit batch only after the prior batch expires and settles;never reuses an original creation',async()=>{
+  const f=fixture(),actor='admin_'+'d'.repeat(64);f.state.now=Date.now();const original={actor,signal:new AbortController().signal},first=await f.service.create(original);assert.equal(first.length,2);
+  await assert.rejects(()=>f.service.create({actor,signal:new AbortController().signal}),e=>e.code==='uncertain');assert.equal(f.state.signatures,2);
+  f.state.now+=300001;assert.equal(f.source.clock().getTime(),f.state.now);assert.equal(f.options.observerChannel.clock().getTime(),f.state.now);const second=await f.service.create({actor,signal:new AbortController().signal});assert.equal(second.length,2);assert(second.every(x=>!first.some(y=>y.requestId===x.requestId)));assert.equal(f.state.signatures,4);assert.equal(f.state.queries,4);
+  await assert.rejects(()=>f.service.create(original),e=>e.code==='uncertain');assert.equal(f.state.signatures,4);assert.equal(f.state.prepares,0);assert.equal(f.state.bindings,1);assert.equal((await f.owner.close()).drained,true);
+ });
+ await test('expired borrower cannot release a pending original transaction or reuse a failed creation',async()=>{
+  const gate=defer(),f=fixture({queryGate:gate}),actor='admin_'+'e'.repeat(64),abort=new AbortController();f.state.now=Date.now();const original={actor,signal:abort.signal},pending=f.service.create(original);void pending.catch(()=>{});for(let n=0;n<100&&!f.state.queries;n++)await tick();assert.equal(f.state.queries,1);abort.abort();f.state.now+=300001;
+  await assert.rejects(()=>f.service.create({actor,signal:new AbortController().signal}),e=>e.code==='uncertain');assert.equal(f.state.signatures,2);assert.equal(f.state.closeCalls,0);gate.resolve();await assert.rejects(pending);await tick();await assert.rejects(()=>f.service.create(original));const next=await f.service.create({actor,signal:new AbortController().signal});assert.equal(next.length,2);await assert.rejects(pending);assert.equal((await f.owner.close()).drained,true);
  });
  await test('legacy omitted channel stays uninstalled and JSON/getter/proxy cannot replace original constructor capabilities',async()=>{
   const f=fixture({channel:false});assert.equal(f.service,undefined);assert.equal(f.state.auth,0);await f.owner.close();

@@ -24,6 +24,18 @@ function fixture(){
 }
 let number=0;async function test(name,fn){const id=++number;if(selected&&!selected.includes(id))return;try{await fn();results.push({number:id,name,status:'PASS'});}catch(error){results.push({number:id,name,status:'FAIL',error:error.stack});}}
 (async()=>{
+ await test('native identity preserves the original pending signature across an elapsed window',async()=>{
+  const f=fixture();f.pending.signing=defer();f.bind();const owner=f.construct(),binding=f.state.bindings[0],grammar=require('../../contracts/ai/v1/observer-channel.cjs').createObserverEnvelopeContract(f.identity.policy),signal=new AbortController().signal;
+  const sign=request=>binding.observerSigning.sign(Object.freeze({kind:'sign-original-observer-request-v1',purpose:'agent-readiness-observation',identity:f.identity.identity,request,signingText:grammar.requestSigningText(request),signal}));const pending=sign(f.request(0));void pending.catch(()=>{});await entered(f.ready.sign);f.pending.now=1760000030001;await assert.rejects(async()=>sign({...f.request(1),issuedAt:f.pending.now,deadline:f.pending.now+30000}));assert.equal(f.state.signs,1);f.pending.signing.resolve();await assert.rejects(pending);assert.equal((await owner.close()).drained,true);
+ });
+
+ await test('original native binding signs a later finite window without clearing previous request or nonce replay guards',async()=>{
+  const f=fixture();f.bind();const owner=f.construct(),binding=f.state.bindings[0],grammar=require('../../contracts/ai/v1/observer-channel.cjs').createObserverEnvelopeContract(f.identity.policy),signal=new AbortController().signal;
+  const sign=request=>binding.observerSigning.sign(Object.freeze({kind:'sign-original-observer-request-v1',purpose:'agent-readiness-observation',identity:f.identity.identity,request,signingText:grammar.requestSigningText(request),signal}));
+  for(let n=0;n<5;n++)await sign(f.request(n));await assert.rejects(async()=>sign(f.request(99)));f.pending.now=1760000030001;for(let n=5;n<10;n++)await sign({...f.request(n),issuedAt:f.pending.now,deadline:f.pending.now+30000});assert.equal(f.state.signs,10);
+  f.pending.now+=30001;await assert.rejects(async()=>sign({...f.request(0),issuedAt:f.pending.now,deadline:f.pending.now+30000}));await assert.rejects(async()=>sign({...f.request(90),nonce:f.request(1).nonce,issuedAt:f.pending.now,deadline:f.pending.now+30000}));assert.equal(f.state.signs,10);assert.equal((await owner.close()).drained,true);
+ });
+
  await test('inert identity capture andnative factory handoff share exact binding/capability;fixed synthetic env isread only after separate original grants',async()=>{
   const f=fixture();f.bind();assert.equal(f.state.reads,0);assert.equal(f.state.grants.length,0);assert.equal(f.state.bindings.length,0);const owner=f.construct();assert.equal(f.state.reads,0);const result=await owner.signObserverRequest(f.request());assert.equal(f.state.reads,1);assert.equal(f.state.signs,1);assert.deepEqual(f.state.grants.map(g=>g.phase),['read-private-key','sign-request']);assert(f.state.grants.every(g=>Object.isFrozen(g)&&g.binding==='env:YTV_AI_OBSERVER_SIGNING_PRIVATE_KEY'&&g.purpose==='agent-readiness-observation'));assert(f.state.grants.every(g=>g.identity.spkiSha256===fingerprint));assert.equal(result.scope,'signature-only-no-authority');assert.equal(result.trust,'untrusted-observer-data');assert(f.state.der.every(x=>x===0));assert.equal((await owner.close()).drained,true);const binding=f.state.bindings[0];assert.strictEqual(binding.stop(),binding.observerSigning.stop());assert.equal(f.state.nativeClosed,1);
  });
