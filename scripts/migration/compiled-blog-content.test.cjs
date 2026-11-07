@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
 const contract=require('../../contracts/ai/v1/compiled-blog.cjs');
 const root=path.resolve(__dirname,'../..'),results=[];
-const test=async(name,fn)=>{try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}};
+const test=async(name,fn)=>{if(process.argv.includes('--catalog-parity-only')&&!name.startsWith('all 37 original articles'))return;try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}};
 const value=(lang='es',suffix='a')=>({version:1,publicationId:'publication_'+suffix.repeat(64),payloadDigest:'d'.repeat(64),slug:'new-original-article',lang,cat:'youtube',readMin:7,publishedAt:'2026-10-26',author:{name:'Synthetic author',role:lang==='es'?'Autora de prueba':'Test author',avatar:'SA'},title:lang==='es'?'Título original único':'Unique original title',excerpt:lang==='es'?'Resumen aprobado':'Approved summary',blocks:[{type:'h2',t:lang==='es'?'Sección original':'Original section'},{type:'p',t:lang==='es'?'Texto visible aprobado':'Approved visible text'},{type:'list',items:['Uno','Dos']}],canonicalUrl:'https://ytubviral.com'+(lang==='en'?'/en':'')+'/blog/new-original-article'});
 function site(deliveries=[],language='es'){
  const cache=new Map(),document={version:1,deliveries};
@@ -54,6 +54,7 @@ function site(deliveries=[],language='es'){
    const view=site([],lang),article=view.article(),params=await article.generateStaticParams();
    assert.equal(params.length,37);assert.equal(new Set(params.map(p=>p.slug)).size,37);
    const index=renderToStaticMarkup(view.index().default()),sitemap=view.sitemap().default(),feed=await view.rss().GET(),xml=await feed.text();
+   assert.equal(require('node:crypto').createHash('sha256').update(xml).digest('hex'),baseline.rssBaseline.sha256);assert.equal((xml.match(/<item>/g)||[]).length,baseline.rssBaseline.items);
    for(const slug of baseline.restoredSlugs){
     const post=view.data().getPost(slug,lang);assert(post);assert(params.some(p=>p.slug===slug));
     const metadata=await article.generateMetadata({params:Promise.resolve({slug})});
@@ -61,7 +62,7 @@ function site(deliveries=[],language='es'){
     const html=renderToStaticMarkup(await article.default({params:Promise.resolve({slug})}));
     const escapedTitle=renderToStaticMarkup(React.createElement('span',null,post.title[lang])).slice(6,-7);
     assert(html.includes(escapedTitle));assert(html.length>1000);assert(!html.includes('id="ytv-blog-publication"'));
-    assert(index.includes('/blog/'+slug));assert(sitemap.some(p=>p.url==='https://ytubviral.com/blog/'+slug));assert(xml.includes(slug));
+    assert(index.includes('/blog/'+slug));assert(sitemap.some(p=>p.url==='https://ytubviral.com/blog/'+slug));
    }
   }
  });

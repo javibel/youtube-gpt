@@ -1195,5 +1195,11 @@
         "en": "de3b0928084017ebb7370c44d038268f3f410969ef8bb908fcbb014d83d304ff"
       }
     }
-  ]
+  ],
+  "rssBaseline": {
+    "sourceWebCommit": "73d06b2229869ecc44dd5a0adf7ed154a6f9fcab",
+    "scope": "Actual deterministic RSS output from frozen pre-restoration public route,including its20-item bound;not a live HTTP observation",
+    "sha256": "fb39e06aa3ddb44456d4f6a63ab5cebcd911b3e7d54ad9a638a05bcaefcc5302",
+    "items": 20
+  }
 }
