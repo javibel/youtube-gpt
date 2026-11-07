@@ -1,0 +1,1199 @@
+{
+  "sourceCommit": "c92cccb3923f8b3ff68ddfcca88e85300e6d10a3",
+  "sourceFile": "lib/blog-data.ts",
+  "sourceSha256": "2a61be0e14abb6ff7e1f61d521aae857fa085b20648f8757000aab99d2214af8",
+  "extraction": "TypeScript AST literal evaluation only;no original module execution",
+  "restoredSlugs": [
+    "best-time-post-youtube-2026",
+    "youtube-channel-name-generator-free",
+    "morningfame-alternative-free-2026",
+    "youtube-hashtag-generator-free",
+    "how-to-grow-youtube-0-subscribers-2026"
+  ],
+  "articles": [
+    {
+      "post": {
+        "slug": "herramientas-ia-para-youtubers-2026",
+        "cat": "ai",
+        "readMin": 8,
+        "date": {
+          "es": "15 Oct 2025",
+          "en": "Oct 15, 2025"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/herramientas-ia-youtubers.webp",
+        "title": {
+          "es": "10 Herramientas de IA para YouTubers en 2026 (Gratis y de Pago)",
+          "en": "10 AI Tools for YouTubers in 2026 (Free and Paid)"
+        },
+        "excerpt": {
+          "es": "La IA ha revolucionado cómo trabajan los creadores. Aquí están las 10 mejores herramientas de 2026 que te ahorran horas cada semana, con precios y para qué sirve cada una.",
+          "en": "AI has revolutionized how creators work. In 2026 there are incredible tools that save you hours every week — here are the top 10, with pricing and what each one does."
+        }
+      },
+      "bodyDigests": {
+        "es": "23ab0f45b0112397c97e71c1b826b06cb325498660bebfd76148283f5825f17c",
+        "en": "953d3eed8e60902fd6233a048b9b03050bcb8693c64644cbc602347d3d613ab6"
+      }
+    },
+    {
+      "post": {
+        "slug": "como-escribir-titulos-virales-youtube",
+        "cat": "youtube",
+        "readMin": 7,
+        "date": {
+          "es": "22 Nov 2025",
+          "en": "Nov 22, 2025"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/titulos-virales-youtube.webp",
+        "title": {
+          "es": "Cómo Escribir Títulos Virales para YouTube en 2026 (Guía Completa)",
+          "en": "How to Write Viral YouTube Titles in 2026 (Complete Guide)"
+        },
+        "excerpt": {
+          "es": "El título es la diferencia entre 100 y 100.000 visualizaciones. Aprende las 7 fórmulas probadas para escribir títulos que disparan el CTR, con ejemplos reales.",
+          "en": "The title is the difference between 100 and 100,000 views. Learn the 7 proven formulas for writing titles that skyrocket CTR, with real examples and a perfect-title checklist."
+        }
+      },
+      "bodyDigests": {
+        "es": "55e19a1e9a8b4deef9854614bad159055dcad76a7ba393eeb3f960182d60b7ef",
+        "en": "1ac32d8532be2ad324b5ca69992903c4dd78a55b29b4a8689e9ccf375a59eefd"
+      }
+    },
+    {
+      "post": {
+        "slug": "descripciones-seo-youtube-guia",
+        "cat": "tutorials",
+        "readMin": 9,
+        "date": {
+          "es": "8 Ene 2026",
+          "en": "Jan 8, 2026"
+        },
+        "author": {
+          "name": "Lucía Vega",
+          "role": {
+            "es": "Especialista en contenido",
+            "en": "Content specialist"
+          },
+          "avatar": "LV"
+        },
+        "image": "/blog/descripciones-seo-youtube.webp",
+        "title": {
+          "es": "Descripciones SEO para YouTube: La Guía Definitiva 2026",
+          "en": "SEO Descriptions for YouTube: The Definitive Guide 2026"
+        },
+        "excerpt": {
+          "es": "La descripción es el elemento más infravalorado del SEO en YouTube. Trabajarla bien mejora tus opciones de aparecer en búsqueda y sugeridos.",
+          "en": "Your video description is the most underrated YouTube SEO element. Getting it right improves your chances of showing up in search and suggested. Here is everything you need to know."
+        }
+      },
+      "bodyDigests": {
+        "es": "40c1648333b5c98ac2e652de53a4befbf0cdcd82b52ec6811390840d1dcaccd3",
+        "en": "800ebcb28562bd2af4462f60a0bedf0fc0be3efe56a5c8e236591f81e2a6b2a6"
+      }
+    },
+    {
+      "post": {
+        "slug": "7-frameworks-titulos-virales-youtube",
+        "cat": "youtube",
+        "readMin": 9,
+        "date": {
+          "es": "14 Mar 2026",
+          "en": "Mar 14, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/frameworks-titulos-virales.webp",
+        "title": {
+          "es": "7 frameworks para títulos virales que YouTube premia en 2026",
+          "en": "7 viral title frameworks YouTube rewards in 2026"
+        },
+        "excerpt": {
+          "es": "Un repaso a los frameworks de titulación que el algoritmo prioriza en 2026 y a los que se están quedando atrás. Los números específicos siguen ganando.",
+          "en": "A run-through of the title frameworks the algorithm prioritizes in 2026 and the ones that are fading. Spoiler: specific numbers still win."
+        }
+      },
+      "bodyDigests": {
+        "es": "14607f8d80af6be9124314591a41d5e9f7cc9ffd4cd1e1f94b52fe135a55e11e",
+        "en": "cb8fa2f33a400c59383a22ac58933d47a478fd222cb3d174f41e8c5fd1382cce"
+      }
+    },
+    {
+      "post": {
+        "slug": "cuanto-gana-un-youtuber-en-espana",
+        "cat": "marketing",
+        "readMin": 14,
+        "date": {
+          "es": "30 Abr 2026",
+          "en": "Apr 30, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/cuanto-gana-youtuber-espana.webp",
+        "title": {
+          "es": "Cuánto Gana Realmente un YouTuber en España (y Por Qué Nadie Te Cuenta la Verdad)",
+          "en": "How Much Does a YouTuber Really Earn in Spain (And Why Nobody Tells the Truth)"
+        },
+        "excerpt": {
+          "es": "CPMs reales por nicho, impuestos, el Valle de la Muerte entre 100 y 10.000 suscriptores, y por qué YouTube es un negocio de márgenes estrechos. Sin edulcorar.",
+          "en": "Real CPMs by niche, freelancer taxes, the Valley of Death between 100 and 10,000 subscribers, and why YouTube isn't a lottery ticket but a thin-margin business. No sugar-coating."
+        }
+      },
+      "bodyDigests": {
+        "es": "f38e1af661d7d06b3bcc6f4b2148445fdab32cd61c26417439c426ccd9563742",
+        "en": "0c0550493834eb461d48068444bba8e5a935dcea3314d003b013eff7aff77a21"
+      }
+    },
+    {
+      "post": {
+        "slug": "setup-youtube-menos-500-euros",
+        "cat": "gear",
+        "image": "/blog/setup-youtube-menos-500-euros.webp",
+        "readMin": 11,
+        "date": {
+          "es": "1 May 2026",
+          "en": "May 1, 2026"
+        },
+        "author": {
+          "name": "Marcos Ruiz",
+          "role": {
+            "es": "Editor técnico, YTubViral",
+            "en": "Technical Editor, YTubViral"
+          },
+          "avatar": "MR"
+        },
+        "title": {
+          "es": "Tu Primer Setup de YouTube por Menos de 500€ (Guía de Compra 2026)",
+          "en": "Your First YouTube Setup for Under €500 (2026 Buying Guide)"
+        },
+        "excerpt": {
+          "es": "No necesitas miles de euros para empezar en YouTube con calidad profesional. Setup completo — cámara, micro, iluminación y accesorios — por menos de 500€.",
+          "en": "You don't need to spend thousands to start YouTube with professional quality. I'll build you a complete setup — camera, mic, lighting and accessories — for under €500, piece by piece."
+        }
+      },
+      "bodyDigests": {
+        "es": "f65d9bdb9d1bf02eb81d95ef4a7c80ba2e5c2f1344d9955a2343173009c01754",
+        "en": "0242a566a8beeb4e7d4ff3cd0ef1f6b82c0951396b624dde4a2b4a94d14cab17"
+      }
+    },
+    {
+      "post": {
+        "slug": "keyword-research-youtube-guia",
+        "cat": "tutorials",
+        "readMin": 12,
+        "date": {
+          "es": "5 May 2026",
+          "en": "May 5, 2026"
+        },
+        "author": {
+          "name": "Lucía Vega",
+          "role": {
+            "es": "Especialista en contenido",
+            "en": "Content specialist"
+          },
+          "avatar": "LV"
+        },
+        "image": "/blog/keyword-research-youtube-guia.webp",
+        "title": {
+          "es": "Keyword Research para YouTube Paso a Paso: La Guía Definitiva 2026",
+          "en": "YouTube Keyword Research Step by Step: The Definitive Guide 2026"
+        },
+        "excerpt": {
+          "es": "Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas y los errores más comunes.",
+          "en": "Learn how to find high-volume, low-competition keywords for your videos. Complete method with free tools, real examples, and the most common mistakes."
+        }
+      },
+      "bodyDigests": {
+        "es": "2b9064e070b64cf18ce0e7c0dc122b3a6049006a1d7104e889cc5cec5045f37f",
+        "en": "b02ce6c91d4ccc83dd55ebf2c4b6dbad386695d248601af4ddaab116eaee60da"
+      }
+    },
+    {
+      "post": {
+        "slug": "ab-testing-youtube-titulos-guia",
+        "cat": "youtube",
+        "readMin": 11,
+        "date": {
+          "es": "5 May 2026",
+          "en": "May 5, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/ab-testing-youtube-titulos.webp",
+        "title": {
+          "es": "A/B Testing en YouTube: Cómo Testear Títulos y Miniaturas en 2026 (Guía Completa)",
+          "en": "YouTube A/B Testing: How to Test Titles & Thumbnails in 2026 (Complete Guide)"
+        },
+        "excerpt": {
+          "es": "YouTube ya permite A/B testing nativo de títulos y miniaturas. Cómo funciona, sus limitaciones, y cómo combinarlo con herramientas externas para optimizar tu CTR.",
+          "en": "YouTube now allows native A/B testing for titles and thumbnails. We show you how it works, its limitations, and how to combine it with external tools to maximize your CTR."
+        }
+      },
+      "bodyDigests": {
+        "es": "b4b9b8b321b3ebde5581636c50ebbbd16ee0b6b78c7c6dfd1a34ea93077da71f",
+        "en": "56a1d8bb9012b6417d75a8374959887366b1f4baef3874cc30623522ed711dbc"
+      }
+    },
+    {
+      "post": {
+        "slug": "algoritmo-youtube-2026-como-funciona",
+        "cat": "youtube",
+        "readMin": 14,
+        "date": {
+          "es": "6 May 2026",
+          "en": "May 6, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/algoritmo-youtube-2026.webp",
+        "title": {
+          "es": "El Algoritmo de YouTube en 2026: Cómo Funciona Realmente (y Cómo Aprovecharlo)",
+          "en": "The YouTube Algorithm in 2026: How It Really Works (and How to Use It)"
+        },
+        "excerpt": {
+          "es": "YouTube ya no premia solo el watch time. En 2026, la satisfacción del espectador, los LLMs y las señales contextuales han cambiado las reglas. Qué métricas importan y cómo adaptar tu estrategia.",
+          "en": "YouTube no longer rewards watch time alone. In 2026, viewer satisfaction, LLMs, and contextual signals have changed the rules. We explain what's changed, which metrics truly matter, and how to adapt your strategy with real data."
+        }
+      },
+      "bodyDigests": {
+        "es": "5037980bb468454f33d92a3017db8d549fcbc41c2e537b5fc2eba1fd42ae4a93",
+        "en": "97f70cb7ca16926a5c575a7af03b6145a47743b1edb8b7afa9ef148fc384a655"
+      }
+    },
+    {
+      "post": {
+        "slug": "como-conseguir-suscriptores-youtube-2026",
+        "cat": "youtube",
+        "readMin": 12,
+        "date": {
+          "es": "8 May 2026",
+          "en": "May 8, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/conseguir-suscriptores-youtube.webp",
+        "title": {
+          "es": "Cómo Conseguir Suscriptores en YouTube en 2026: 12 Estrategias que Funcionan de Verdad",
+          "en": "How to Get Subscribers on YouTube in 2026: 12 Strategies That Actually Work"
+        },
+        "excerpt": {
+          "es": "Ganar suscriptores en YouTube es más difícil que nunca — y más importante. 12 estrategias probadas con datos reales para crecer tu canal, del primer vídeo a los 100K.",
+          "en": "Gaining subscribers on YouTube is harder than ever — and more important than ever. We show you 12 proven strategies backed by real data to grow your channel in 2026, from your first video to 100K."
+        }
+      },
+      "bodyDigests": {
+        "es": "ce4a5e52bfa4a89793e775f61c02d5e2a4f4925437752350621af9c209b9087f",
+        "en": "8b8f5cfe1a0fef2ce897bf3b559e7c0290405b3b9292c435d5b7b986b38f25ae"
+      }
+    },
+    {
+      "post": {
+        "slug": "como-analizar-competencia-youtube",
+        "cat": "marketing",
+        "readMin": 11,
+        "date": {
+          "es": "10 May 2026",
+          "en": "May 10, 2026"
+        },
+        "author": {
+          "name": "Lucía Vega",
+          "role": {
+            "es": "Especialista en contenido",
+            "en": "Content specialist"
+          },
+          "avatar": "LV"
+        },
+        "image": "/blog/analizar-competencia-youtube.webp",
+        "title": {
+          "es": "Cómo Analizar a tu Competencia en YouTube en 2026 (Guía Paso a Paso)",
+          "en": "How to Analyze Your YouTube Competition in 2026 (Step-by-Step Guide)"
+        },
+        "excerpt": {
+          "es": "Tus competidores ya tienen las respuestas: qué temas funcionan, qué keywords posicionan, cuándo publican. Aprende a extraer esos datos gratis y convertirlos en ventaja.",
+          "en": "Your competitors already have the answers you're looking for: which topics work, which keywords rank, when they publish. We show you how to extract that data for free and turn it into an edge for your channel."
+        }
+      },
+      "bodyDigests": {
+        "es": "d3f18767bb0b2ddca40d37e65f3f98f7cbcb908b7559997ab511e8a90c8e64bc",
+        "en": "2a9d0a0f96a264a9b7b92ab77971595e53559aff1e51047373775ddeb8dcbb99"
+      }
+    },
+    {
+      "post": {
+        "slug": "thumbnails-youtube-guia-ctr",
+        "cat": "tutorials",
+        "readMin": 11,
+        "date": {
+          "es": "11 May 2026",
+          "en": "May 11, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/thumbnails-youtube-ctr.webp",
+        "title": {
+          "es": "Cómo Diseñar Thumbnails para YouTube que Generen Clicks (Guía 2026)",
+          "en": "How to Design YouTube Thumbnails That Get Clicks (2026 Guide)"
+        },
+        "excerpt": {
+          "es": "La gran mayoría de los vídeos top de YouTube usan miniatura personalizada. Las reglas de diseño que separan un CTR bajo de uno alto, con ejemplos y checklist.",
+          "en": "Almost every top-performing YouTube video uses a custom thumbnail. We break down the design rules that separate a low CTR from a high one, with examples, mistakes to avoid, and a checklist for every thumbnail."
+        }
+      },
+      "bodyDigests": {
+        "es": "f7538eec3a2742e5ea9966a852a9431b4537d28ea139bbeea641a0971b76dc8a",
+        "en": "9ffe6be54b5927a46312e8e247b2971b3e13b2f3be5fe28d0aa589cc15a46bee"
+      }
+    },
+    {
+      "post": {
+        "slug": "como-crear-scripts-youtube-con-ia",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "12 May 2026",
+          "en": "May 12, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/scripts-youtube-ia.webp",
+        "title": {
+          "es": "Cómo Crear Scripts de YouTube con IA en 2026 (Guía Paso a Paso)",
+          "en": "How to Create YouTube Scripts with AI in 2026 (Step-by-Step Guide)"
+        },
+        "excerpt": {
+          "es": "La IA no te hará buen YouTuber, pero puede ahorrarte 3 horas por guion. El proceso exacto para crear scripts que suenen a ti — no a un robot — usando IA como herramienta.",
+          "en": "AI won't make you a good YouTuber, but it can save you 3 hours per script. I'll show you the exact process to create scripts that sound like you — not a robot — using AI as a tool, not a crutch."
+        }
+      },
+      "bodyDigests": {
+        "es": "944728948e9d6061e175cc46539c8bbb8f3025e35413d09bb8d48a483a77393e",
+        "en": "4429eb05c4e86d264a6ba4ad6a975013d02b90be1be517222e9acaa64bf0f334"
+      }
+    },
+    {
+      "post": {
+        "slug": "como-monetizar-youtube-2026-guia",
+        "cat": "marketing",
+        "readMin": 14,
+        "date": {
+          "es": "13 May 2026",
+          "en": "May 13, 2026"
+        },
+        "author": {
+          "name": "Lucía Vega",
+          "role": {
+            "es": "Especialista en contenido",
+            "en": "Content specialist"
+          },
+          "avatar": "LV"
+        },
+        "image": "/blog/monetizar-youtube-2026.webp",
+        "title": {
+          "es": "Cómo Monetizar un Canal de YouTube en 2026: La Guía Completa (AdSense, Afiliados, Sponsors y Más)",
+          "en": "How to Monetize a YouTube Channel in 2026: The Complete Guide (AdSense, Affiliates, Sponsors & More)"
+        },
+        "excerpt": {
+          "es": "AdSense es solo la puerta de entrada. Las 6 fuentes de ingresos reales de un YouTuber en 2026, con CPMs por nicho, datos de Shorts y la hoja de ruta desde los 500 suscriptores.",
+          "en": "AdSense is just the entry door. We break down the 6 real income sources for a YouTuber in 2026, with CPMs by niche, Shorts data, examples of small channels earning more than big ones, and the roadmap to start earning from 500 subscribers."
+        }
+      },
+      "bodyDigests": {
+        "es": "d7b12f7bc12639301e71de5632939541a892ad907262069df08f5220e25872d9",
+        "en": "92df12e028d7ae67d263f752a6dfbdc0191bd7dd5f2213d5b4e7adc6799f7a98"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-neurodivergencia-guia",
+        "cat": "youtube",
+        "readMin": 12,
+        "date": {
+          "es": "14 May 2026",
+          "en": "May 14, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-neurodivergencia.webp",
+        "title": {
+          "es": "Cómo Triunfar en YouTube Siendo Neurodivergente: Guía Práctica 2026",
+          "en": "How to Succeed on YouTube as a Neurodivergent Creator: Practical Guide 2026"
+        },
+        "excerpt": {
+          "es": "TDAH, autismo, dislexia — tu cerebro funciona diferente. En YouTube eso es una ventaja. Cómo adaptar tu workflow, evitar el burnout y convertir la neurodivergencia en fortaleza.",
+          "en": "ADHD, autism, dyslexia — your brain doesn't work like most people's. That's not a problem on YouTube: it's an advantage. I'll show you how to adapt your workflow, avoid burnout, and turn your neurodivergence into your greatest strength as a creator."
+        }
+      },
+      "bodyDigests": {
+        "es": "23bef3813a25bb8b0546e2fb9a39527edfdf60da666ab18a1d47beea438ce290",
+        "en": "81c074fa6bf389148e1034a7d0edec0cec6270d743b95cc1c2a9c002130bc26d"
+      }
+    },
+    {
+      "post": {
+        "slug": "auditoria-canal-youtube-guia",
+        "cat": "youtube",
+        "readMin": 12,
+        "date": {
+          "es": "May 16, 2026",
+          "en": "May 16, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/auditoria-canal-youtube.webp",
+        "title": {
+          "es": "Auditoría de canal YouTube: cómo detectar (y arreglar) lo que frena tu crecimiento",
+          "en": "YouTube Channel Audit: How to Find (and Fix) What's Holding You Back"
+        },
+        "excerpt": {
+          "es": "Aprende a hacer una auditoría completa de tu canal para identificar problemas de SEO, contenido y estrategia que están frenando tu crecimiento.",
+          "en": "Learn to perform a complete channel audit to identify SEO, content, and strategy issues holding back your growth."
+        }
+      },
+      "bodyDigests": {
+        "es": "d99aed7eef377045628e9afd00e679ea1db424d63c28c8c7212d52b29b10b8be",
+        "en": "735a1498babbf7143df661fef74eaf7e228aca222cb7a1f0422425fa564c95c1"
+      }
+    },
+    {
+      "post": {
+        "slug": "tour-completo-ytubviral-14-herramientas",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "17 May 2026",
+          "en": "May 17, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO y Fundador, YTubViral",
+            "en": "CEO & Founder, YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/tour-completo-ytubviral.webp",
+        "title": {
+          "es": "Tour Completo de YTubViral: 14 Herramientas de IA para Crecer en YouTube",
+          "en": "Complete YTubViral Tour: 14 AI Tools to Grow on YouTube"
+        },
+        "excerpt": {
+          "es": "Las 14 herramientas de YTubViral en acción: desde el generador de títulos hasta el coaching con IA. Vídeo tutorial paso a paso de cómo funciona cada una.",
+          "en": "We walk through all 14 YTubViral tools in action: from the title generator to AI coaching. Includes a step-by-step video tutorial so you can see exactly how each one works."
+        }
+      },
+      "bodyDigests": {
+        "es": "e92dab2b35b29244e9ab85d9865ba92639d463db54e8fa0635b1c282b57f5050",
+        "en": "f2503cd4709a6b4e615124f26e7cd293b6e455b4c2f6b03e03269c1008e76dd1"
+      }
+    },
+    {
+      "post": {
+        "slug": "ideas-videos-youtube-no-se-que-subir",
+        "cat": "youtube",
+        "readMin": 11,
+        "date": {
+          "es": "19 May 2026",
+          "en": "May 19, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/ideas-videos-youtube.webp",
+        "title": {
+          "es": "No sé qué subir a YouTube: el sistema para no quedarte sin ideas nunca",
+          "en": "Don't Know What to Upload to YouTube? A System to Never Run Out of Ideas"
+        },
+        "excerpt": {
+          "es": "Olvídate de listas genéricas de 100 ideas. Aprende un sistema con datos y herramientas de IA para generar ideas de vídeo relevantes para tu nicho cada semana.",
+          "en": "Forget generic 100-idea lists. Learn a data-driven system with AI tools to generate relevant video ideas for your niche every week."
+        }
+      },
+      "bodyDigests": {
+        "es": "a80aa1a731cd786100312c7e773f6a19f317557bad990425433522e5e089fb5a",
+        "en": "841c723cab332ac57dafc1a1a5a41460d537c8fff03cfc6c39c2b70fc1e2d768"
+      }
+    },
+    {
+      "post": {
+        "slug": "best-youtube-title-generator-2026",
+        "cat": "ai",
+        "readMin": 10,
+        "date": {
+          "es": "23 may 2026",
+          "en": "May 23, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/best-youtube-title-generator-2026.webp",
+        "title": {
+          "es": "Mejores Generadores de Títulos YouTube 2026 - Guía Completa",
+          "en": "Best YouTube Title Generator 2026 - Complete Guide"
+        },
+        "excerpt": {
+          "es": "Descubre los mejores generadores de títulos para YouTube en 2026. Herramientas IA que optimizan tus videos para mayor visibilidad, clics y monetización.",
+          "en": "Discover the best YouTube title generators in 2026. AI tools that optimize your videos for better visibility, clicks, and monetization potential."
+        }
+      },
+      "bodyDigests": {
+        "es": "37a65cbbf620fd07f956245eaed52f4e39f32226a70b31342340e50e73fb6354",
+        "en": "a6246f1cde302092543e5b515b865a0bee0c860dc82067fdd47d3c5523bae4f4"
+      }
+    },
+    {
+      "post": {
+        "slug": "vidiq-alternative-free-2026",
+        "cat": "ai",
+        "readMin": 10,
+        "date": {
+          "es": "24 may 2026",
+          "en": "May 24, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/vidiq-alternative-free-2026.webp",
+        "title": {
+          "es": "VidIQ Alternativas Gratuitas 2026: Mejores Herramientas",
+          "en": "VidIQ Alternative Free 2026: Best YouTube Tools"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores alternativas gratuitas a VidIQ en 2026. Herramientas SEO y análisis de YouTube sin costo para optimizar tus vídeos.",
+          "en": "Discover the best free VidIQ alternatives in 2026. Free YouTube SEO and analytics tools to optimize your videos and boost your channel growth."
+        }
+      },
+      "bodyDigests": {
+        "es": "07157208b947082c1f36cf4fc5e2daed17ee0410f3bef6d01f8473ec5066c3a5",
+        "en": "44b4e941b6e878e1ee5056e136e9d688fde5b943760854cad566955e69da16e2"
+      }
+    },
+    {
+      "post": {
+        "slug": "tubebuddy-vs-vidiq-2026",
+        "cat": "marketing",
+        "readMin": 10,
+        "date": {
+          "es": "25 may 2026",
+          "en": "May 25, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/tubebuddy-vs-vidiq-2026.webp",
+        "title": {
+          "es": "TubeBuddy vs VidIQ 2026: Comparativa completa para YouTubers",
+          "en": "TubeBuddy vs VidIQ 2026: Complete Comparison for YouTubers"
+        },
+        "excerpt": {
+          "es": "Descubre las diferencias entre TubeBuddy y VidIQ en 2026. Análisis detallado de características, precios y resultados para elegir la mejor herramienta SEO para tu canal YouTube.",
+          "en": "Discover the differences between TubeBuddy and VidIQ in 2026. Detailed analysis of features, pricing and results to choose the best SEO tool for your YouTube channel."
+        }
+      },
+      "bodyDigests": {
+        "es": "32d7a3362d60d6e12bce2a7053c618e0db9ca9ca09a62a812823c1d71f42215d",
+        "en": "d373bfbbbe2d2585348109edb2fed8e772840ea407a0c7b7989484e9363ba1c2"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-description-generator-ai",
+        "cat": "ai",
+        "readMin": 8,
+        "date": {
+          "es": "28 may 2026",
+          "en": "May 28, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-description-generator-ai.webp",
+        "title": {
+          "es": "Generador de Descripciones YouTube con IA: Aumenta tu Alcance",
+          "en": "YouTube Description Generator AI: Boost Your Video Reach"
+        },
+        "excerpt": {
+          "es": "Descubre cómo un generador de descripciones YouTube con IA puede optimizar tus videos, mejorar el SEO y aumentar visualizaciones automáticamente.",
+          "en": "Learn how a YouTube description generator AI can optimize your videos, improve SEO, and increase views automatically with smart descriptions."
+        }
+      },
+      "bodyDigests": {
+        "es": "de47201b73625a0877f78064046d31263048423f4f7f4795dce4334f4313eda8",
+        "en": "81e8a866ee954385855afacf5d1af870b3ec6d7de4d0eb251a71b66b5307d760"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-trending-videos-free-tool",
+        "cat": "youtube",
+        "readMin": 6,
+        "date": {
+          "es": "31 may 2026",
+          "en": "May 31, 2026"
+        },
+        "image": "/blog/youtube-trending-videos-free-tool.webp",
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "title": {
+          "es": "Cómo Ver los Vídeos Trending de YouTube en Tiempo Real (Herramienta Gratis)",
+          "en": "How to See YouTube Trending Videos in Real Time (Free Tool)"
+        },
+        "excerpt": {
+          "es": "Descubre qué está viral ahora en YouTube por país y categoría. Herramienta gratuita con views/hora, engagement y widget embebible para tu web.",
+          "en": "See what's going viral on YouTube right now by country and category. Free tool with views/hour, engagement metrics, and embeddable widget."
+        }
+      },
+      "bodyDigests": {
+        "es": "2362d604f56bd21353332820c42b1bffa6964a835697012004d45a270b8dc0c1",
+        "en": "b849058645410d8ea61067b82c3171d35fea95ee95f8362a4510cb519782e36b"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-tag-generator-free-2026",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "4 jun 2026",
+          "en": "Jun 4, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-tag-generator-free-2026.webp",
+        "title": {
+          "es": "Generador de Etiquetas YouTube Gratis: Herramienta SEO",
+          "en": "Free YouTube Tag Generator: Best SEO Tool for Videos"
+        },
+        "excerpt": {
+          "es": "Descubre cómo usar un generador de etiquetas YouTube gratis para optimizar tus videos. Herramienta SEO efectiva que aumenta visibilidad y alcance en la plataforma.",
+          "en": "Learn how to use a free YouTube tag generator to optimize your videos. Effective SEO tool that increases visibility and reach on the platform."
+        }
+      },
+      "bodyDigests": {
+        "es": "686c18ff670163faa52295217d0041ec065dd28a85f2bf2010ae305937752981",
+        "en": "c59451a2cf2183d5425fbd1b9a141ecd376c89cad18650eeba587b1ba5c49b7d"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-keyword-research-free-tool",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "8 jun 2026",
+          "en": "Jun 8, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-keyword-research-free-tool.webp",
+        "title": {
+          "es": "Herramienta Gratuita para Investigación de Palabras Clave YouTube",
+          "en": "Free YouTube Keyword Research Tool: Complete Guide"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores herramientas gratuitas para investigación de palabras clave en YouTube. Optimiza tu contenido y aumenta visibilidad con estrategias SEO efectivas.",
+          "en": "Learn how to use free YouTube keyword research tools to boost your channel's visibility. Find the best keywords and optimize your video content for better rankings."
+        }
+      },
+      "bodyDigests": {
+        "es": "f7391775846e32249ad87d7f614a9cfd4963a9b9d7df908c8034a83c30069220",
+        "en": "0bceefe1f0d1413f45c294c9dc12d385be8979973425d3bc6fbe1c04e68faf11"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-analytics-tools-free-2026",
+        "cat": "ai",
+        "readMin": 10,
+        "date": {
+          "es": "11 jun 2026",
+          "en": "Jun 11, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-analytics-tools-free-2026.webp",
+        "title": {
+          "es": "Mejores Herramientas de Analytics YouTube Gratis 2026",
+          "en": "Best Free YouTube Analytics Tools 2026"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores herramientas de analytics para YouTube gratis en 2026. Analiza tu canal, crecimiento y rendimiento sin gastar dinero con estas opciones.",
+          "en": "Discover the best free YouTube analytics tools in 2026. Analyze your channel growth and performance without spending money with these top options."
+        }
+      },
+      "bodyDigests": {
+        "es": "516dad390856570e111696c7aaf7fb7be12446cf304be7ec052b7b20d2ba58d1",
+        "en": "d45ebe90f2767a7c7ae46f634dd30aa00503c4273f979dced16e350810f869f2"
+      }
+    },
+    {
+      "post": {
+        "slug": "how-to-get-more-views-youtube-2026",
+        "cat": "youtube",
+        "readMin": 10,
+        "date": {
+          "es": "15 jun 2026",
+          "en": "Jun 15, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/how-to-get-more-views-youtube-2026.webp",
+        "title": {
+          "es": "Cómo Conseguir Más Vistas en YouTube 2026: Estrategias Efectivas",
+          "en": "How to Get More Views on YouTube 2026: Proven Strategies"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores estrategias para aumentar vistas en YouTube en 2026. Optimiza tu contenido, domina el algoritmo y crece tu canal con técnicas actualizadas.",
+          "en": "Learn the best strategies to increase YouTube views in 2026. Optimize your content, master the algorithm, and grow your channel with updated techniques."
+        }
+      },
+      "bodyDigests": {
+        "es": "2b45cc99f0a989408d149f8c3ec371c7a03c363773814640c257c2709ebb4c57",
+        "en": "86f18097813dfdf9e4519308e700bf5172ba309c3a90e02c4460beaf5d0ce794"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-thumbnail-tips-beginners-guide",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "18 jun 2026",
+          "en": "Jun 18, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-thumbnail-tips-beginners-guide.webp",
+        "title": {
+          "es": "Consejos de Miniaturas YouTube para Principiantes",
+          "en": "YouTube Thumbnail Tips for Beginners: Create Engaging Covers"
+        },
+        "excerpt": {
+          "es": "Aprende a crear miniaturas YouTube profesionales con nuestros consejos para principiantes. Aumenta clics y visualizaciones con diseños que destaquen.",
+          "en": "Master YouTube thumbnail creation with our essential tips for beginners. Learn to design eye-catching covers that boost clicks and views."
+        }
+      },
+      "bodyDigests": {
+        "es": "fa4cce215a1455e5edc8ac3f23a883483d5719acb281c1138a2ce479beb834b6",
+        "en": "71492933f54fac89efb8c3cfc54ba717a0d31b0043b722d23fced0b696fa9dca"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-seo-checker-free-tool",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "3 sept 2026",
+          "en": "Sep 3, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-seo-checker-free-tool.webp",
+        "title": {
+          "es": "YouTube SEO Checker Gratis: Optimiza tus Videos Fácil",
+          "en": "Free YouTube SEO Checker: Optimize Your Videos Easily"
+        },
+        "excerpt": {
+          "es": "Descubre cómo usar un YouTube SEO checker gratis para analizar y mejorar el posicionamiento de tus videos. Guía completa con herramientas y consejos prácticos.",
+          "en": "Learn how to use a free YouTube SEO checker to analyze and improve your video rankings. Complete guide with tools and practical tips to grow your channel."
+        }
+      },
+      "bodyDigests": {
+        "es": "73380a69572ca5f72ae238a4d1c87c22b112e27a97553a6c5228b4abaf642366",
+        "en": "934bf5fed78f1598a0afaea8ac6dae361c3414d74c71039bee0e49de0703fe71"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-engagement-rate-calculator-free",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "7 sept 2026",
+          "en": "Sep 7, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-engagement-rate-calculator-free.webp",
+        "title": {
+          "es": "Calculadora de Tasa de Engagement en YouTube: Guía 2024",
+          "en": "YouTube Engagement Rate Calculator: Complete 2024 Guide"
+        },
+        "excerpt": {
+          "es": "Aprende a usar una calculadora de tasa de engagement en YouTube para medir el rendimiento de tus videos, comparar canales y optimizar tu estrategia de contenido.",
+          "en": "Learn how to use a YouTube engagement rate calculator to measure video performance, benchmark channels, and optimize your content strategy for growth."
+        }
+      },
+      "bodyDigests": {
+        "es": "f17b7e916f0a532873f4e1bf7d419152f309508f16996ac702159752b0da596a",
+        "en": "ba9ccc28d105ee52e6268635fdfa43d7dae0848b19aea9fe9cf1e5daf793a6ec"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-money-calculator-views-dollars",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "10 sept 2026",
+          "en": "Sep 10, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-money-calculator-views-dollars.webp",
+        "title": {
+          "es": "Calculadora de Dinero de YouTube: Convierte Vistas a Dólares",
+          "en": "YouTube Money Calculator: Convert Views to Dollars Easily"
+        },
+        "excerpt": {
+          "es": "Descubre cuánto dinero puedes ganar en YouTube con nuestra calculadora de vistas a dólares. Aprende a estimar tus ingresos por CPM, RPM y monetización real.",
+          "en": "Discover how much money you can earn on YouTube with our views-to-dollars calculator. Learn to estimate earnings by CPM, RPM, and real monetization rates."
+        }
+      },
+      "bodyDigests": {
+        "es": "ee11f754fc76397873a30f7ed0a8ebff742a385f41a559be3f5c28516e6fb2aa",
+        "en": "5ae93eba8ac144a94ab1f6f8eeb5694365050c133b3cdb9dd244cd422d77a50c"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-shorts-ideas-generator-ai",
+        "cat": "ai",
+        "readMin": 10,
+        "date": {
+          "es": "14 sept 2026",
+          "en": "Sep 14, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-shorts-ideas-generator-ai.webp",
+        "title": {
+          "es": "Generador de Ideas para YouTube Shorts con IA: Guía Completa",
+          "en": "AI YouTube Shorts Ideas Generator: Complete Creator Guide"
+        },
+        "excerpt": {
+          "es": "Descubre cómo un generador de ideas para YouTube Shorts con IA puede impulsar tu creatividad, ahorrar tiempo y aumentar tus visualizaciones con contenido viral.",
+          "en": "Discover how an AI YouTube Shorts ideas generator can boost your creativity, save time, and grow your views with fresh, viral-ready content ideas."
+        }
+      },
+      "bodyDigests": {
+        "es": "12d96377cdd16730867fb9f5bd319e7bf5902dcf51f0717e4f0331b366691456",
+        "en": "488a234cec5074f3c2618c03051822d20e7d877fce32032bb6c7b9b5057bc82c"
+      }
+    },
+    {
+      "post": {
+        "slug": "best-time-post-youtube-2026",
+        "cat": "youtube",
+        "readMin": 10,
+        "date": {
+          "es": "17 sept 2026",
+          "en": "Sep 17, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/best-time-post-youtube-2026.webp",
+        "title": {
+          "es": "Mejor Hora para Publicar en YouTube 2026: Guía Completa",
+          "en": "Best Time to Post on YouTube 2026: Complete Guide"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores horas y días para publicar en YouTube en 2026. Maximiza tus vistas y engagement con datos actualizados y estrategias probadas.",
+          "en": "Discover the best times and days to post on YouTube in 2026. Maximize your views and engagement with updated data and proven strategies."
+        }
+      },
+      "bodyDigests": {
+        "es": "f8ccbcbb94352abe85838c9bdaa36c73f346b4a3413aca134b9c26d800419402",
+        "en": "47cff4f1c00b039c1c49001f8d74068c44552b78b233c9b8cf01621c1871a1b6"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-channel-name-generator-free",
+        "cat": "ai",
+        "readMin": 10,
+        "date": {
+          "es": "21 sept 2026",
+          "en": "Sep 21, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-channel-name-generator-free.webp",
+        "title": {
+          "es": "Generador de Nombres para Canal de YouTube Gratis 2024",
+          "en": "Free YouTube Channel Name Generator: Best Tools 2024"
+        },
+        "excerpt": {
+          "es": "Descubre el mejor generador de nombres para canal de YouTube gratis. Crea ideas únicas y memorables para tu canal en segundos con estas herramientas.",
+          "en": "Discover the best free YouTube channel name generator. Create unique and memorable channel name ideas in seconds with these powerful tools."
+        }
+      },
+      "bodyDigests": {
+        "es": "71a34820e2c9f81bfd265cfd22ce746542781f9271fd1a5388655e62f0220f0d",
+        "en": "3c7caa87a247ba578811e1f469f924ea42061ba94b2a2f2de7cdac9fc40c10cc"
+      }
+    },
+    {
+      "post": {
+        "slug": "morningfame-alternative-free-2026",
+        "cat": "marketing",
+        "readMin": 10,
+        "date": {
+          "es": "24 sept 2026",
+          "en": "Sep 24, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/morningfame-alternative-free-2026.webp",
+        "title": {
+          "es": "Alternativa a Morningfame Gratis 2026: Mejores Opciones",
+          "en": "Free Morningfame Alternative 2026: Best Options Reviewed"
+        },
+        "excerpt": {
+          "es": "Descubre las mejores alternativas gratuitas a Morningfame en 2026 para optimizar tus vídeos de YouTube, mejorar el SEO y aumentar tus visualizaciones sin gastar dinero.",
+          "en": "Discover the best free Morningfame alternatives in 2026 to optimize your YouTube videos, boost SEO, and grow your views without spending a dime."
+        }
+      },
+      "bodyDigests": {
+        "es": "6008a292d7ac185c82f07f54653b6dc5a8666cbe16b550fa383fb8ccf217b246",
+        "en": "072b3daf83437c1a58dab7894d93851f97f5099844303b498df5b64cc5ffd216"
+      }
+    },
+    {
+      "post": {
+        "slug": "youtube-hashtag-generator-free",
+        "cat": "tutorials",
+        "readMin": 10,
+        "date": {
+          "es": "28 sept 2026",
+          "en": "Sep 28, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/youtube-hashtag-generator-free.webp",
+        "title": {
+          "es": "Generador de Hashtags para YouTube Gratis: Guía Completa",
+          "en": "Free YouTube Hashtag Generator: Complete Guide 2024"
+        },
+        "excerpt": {
+          "es": "Descubre cómo usar un generador de hashtags para YouTube gratis y aumenta el alcance de tus videos. Aprende las mejores prácticas para posicionar tu contenido.",
+          "en": "Learn how to use a free YouTube hashtag generator to boost your video reach. Discover best practices to rank your content and grow your channel today."
+        }
+      },
+      "bodyDigests": {
+        "es": "f02a226b501d844cc486b1214779d6ff5f35b8e8bb0c9580b2193aa0bb96edfa",
+        "en": "bdffbef4fdc7a6ef570df6f6047f336a8c309ccf1a9918a9a2ddb967364c9ff2"
+      }
+    },
+    {
+      "post": {
+        "slug": "how-to-grow-youtube-0-subscribers-2026",
+        "cat": "youtube",
+        "readMin": 11,
+        "date": {
+          "es": "1 oct 2026",
+          "en": "Oct 1, 2026"
+        },
+        "author": {
+          "name": "Javier Jimeno",
+          "role": {
+            "es": "CEO & Fundador de YTubViral",
+            "en": "CEO & Founder of YTubViral"
+          },
+          "avatar": "JJ"
+        },
+        "image": "/blog/how-to-grow-youtube-0-subscribers-2026.webp",
+        "title": {
+          "es": "Cómo Hacer Crecer tu Canal de YouTube desde 0 Subs en 2026",
+          "en": "How to Grow a YouTube Channel from 0 Subscribers in 2026"
+        },
+        "excerpt": {
+          "es": "Descubre estrategias probadas para hacer crecer tu canal de YouTube desde cero en 2026. Aprende sobre SEO, Shorts, nichos y constancia para ganar tus primeros suscriptores.",
+          "en": "Discover proven strategies to grow your YouTube channel from zero in 2026. Learn about SEO, Shorts, niches, and consistency to gain your first subscribers fast."
+        }
+      },
+      "bodyDigests": {
+        "es": "9c400da895cea2cfb1ed130d56a806f792513759fbd33b3a9d8e573379f651e3",
+        "en": "de3b0928084017ebb7370c44d038268f3f410969ef8bb908fcbb014d83d304ff"
+      }
+    }
+  ]
+}

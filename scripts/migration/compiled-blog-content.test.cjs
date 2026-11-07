@@ -40,6 +40,31 @@ function site(deliveries=[],language='es'){
  await test('accessors and custom serialization cannot run during public validation',()=>{let reads=0;const v=value();Object.defineProperty(v,'title',{get(){reads++;throw Error('secret');},enumerable:true});assert.throws(()=>contract.validatePublicBlogDelivery(v));assert.equal(reads,0);const x=value();x.toJSON=()=>assert.fail('No serialization');assert.throws(()=>contract.validatePublicBlogDelivery(x));});
  await test('duplicate target or publication and inconsistent bilingual authorship are rejected',()=>{const es=value(),en=value('en','b');assert.equal(contract.appendPublicBlogDelivery({version:1,deliveries:[es]},en).deliveries.length,2);for(const changed of [value('es','c'),{...en,publicationId:es.publicationId},{...en,cat:'ai'},{...en,author:{...en.author,name:'Replacement author'}}])assert.throws(()=>contract.appendPublicBlogDelivery({version:1,deliveries:[es]},changed));});
  await test('empty delivery document preserves every existing article and body',()=>{const original=site().data();assert(original.BLOG_POSTS.length>20);assert.equal(original.getPosts('es').length,original.BLOG_POSTS.length);assert.equal(original.getPosts('en').length,original.BLOG_POSTS.length);for(const post of original.BLOG_POSTS)assert.equal(original.getPost(post.slug,'es'),post);});
+ await test('all 37 original articles survive migration and the five later articles render through the public flow',async()=>{
+  const baseline=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/original-blog-catalog-2026-10-01.json'),'utf8'));
+  const hash=value=>require('node:crypto').createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  assert.equal(baseline.sourceCommit,'c92cccb3923f8b3ff68ddfcca88e85300e6d10a3');assert.equal(baseline.articles.length,37);assert.equal(baseline.restoredSlugs.length,5);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'lib/blog-deliveries.json'),'utf8')),{version:1,deliveries:[]});
+  const data=site().data();assert.equal(data.BLOG_POSTS.length,37);
+  for(const original of baseline.articles){
+   assert.deepEqual(data.getPost(original.post.slug),original.post);
+   for(const lang of ['es','en'])assert.equal(hash(data.ARTICLE_BODIES[original.post.slug][lang]),original.bodyDigests[lang]);
+  }
+  for(const lang of ['es','en']){
+   const view=site([],lang),article=view.article(),params=await article.generateStaticParams();
+   assert.equal(params.length,37);assert.equal(new Set(params.map(p=>p.slug)).size,37);
+   const index=renderToStaticMarkup(view.index().default()),sitemap=view.sitemap().default(),feed=await view.rss().GET(),xml=await feed.text();
+   for(const slug of baseline.restoredSlugs){
+    const post=view.data().getPost(slug,lang);assert(post);assert(params.some(p=>p.slug===slug));
+    const metadata=await article.generateMetadata({params:Promise.resolve({slug})});
+    assert.equal(metadata.openGraph.title,post.title[lang]);assert.equal(metadata.alternates.canonical,'https://ytubviral.com'+(lang==='en'?'/en':'')+'/blog/'+slug);
+    const html=renderToStaticMarkup(await article.default({params:Promise.resolve({slug})}));
+    const escapedTitle=renderToStaticMarkup(React.createElement('span',null,post.title[lang])).slice(6,-7);
+    assert(html.includes(escapedTitle));assert(html.length>1000);assert(!html.includes('id="ytv-blog-publication"'));
+    assert(index.includes('/blog/'+slug));assert(sitemap.some(p=>p.url==='https://ytubviral.com/blog/'+slug));assert(xml.includes(slug));
+   }
+  }
+ });
  for(const lang of ['es','en'])await test('one '+lang+' delivery is visible only in its approved language across real pages',async()=>{
   const delivery=value(lang),other=lang==='es'?'en':'es',s=site([delivery],lang),data=s.data();
   assert.equal(data.getPost(delivery.slug,lang).title[lang],delivery.title);assert.equal(data.getPost(delivery.slug,other),undefined);
