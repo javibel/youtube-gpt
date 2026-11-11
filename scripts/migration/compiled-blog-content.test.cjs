@@ -16,6 +16,7 @@ function site(deliveries=[],language='es'){
    if(id.includes('compiled-blog.cjs'))return contract;
    if(id==='@/lib/server-lang')return{getServerLang:()=>language};
    if(id==='@/lib/blog-data')return load('lib/blog-data.ts');
+   if(id==='./article-view'||id==='@/app/blog/[slug]/article-view')return load('app/blog/[slug]/article-view.tsx');
    if(id==='@/lib/blog-seo')return{BLOG_SEO:{}};
    if(id==='@/lib/learn-data')return{LEARN_GUIDES:[]};
    if(id==='@/lib/gear-data')return{ALL_GEAR_SLUGS:[]};
@@ -33,7 +34,7 @@ function site(deliveries=[],language='es'){
   };
   m._compile(compiled,file);return m.exports;
  }
- return{data:()=>load('lib/blog-data.ts'),article:()=>load('app/blog/[slug]/page.tsx'),index:()=>load('app/blog/page.tsx'),rss:()=>load('app/blog/rss.xml/route.ts'),sitemap:()=>load('app/sitemap.ts')};
+ return{data:()=>load('lib/blog-data.ts'),article:()=>load('app/blog/[slug]/page.tsx'),englishArticle:()=>load('app/en/blog/[slug]/page.tsx'),index:()=>load('app/blog/page.tsx'),rss:()=>load('app/blog/rss.xml/route.ts'),sitemap:()=>load('app/sitemap.ts')};
 }
 (async()=>{
  await test('bounded public delivery accepts only the selected language and original canonical',()=>{const es=value();assert.deepEqual(contract.validatePublicBlogDelivery(es),es);for(const mutate of [v=>v.lang='fr',v=>v.canonicalUrl+='/other',v=>v.publishedAt='2026-02-30',v=>v.readMin=Infinity,v=>v.author.secret='private',v=>v.privateSource='unapproved',v=>v.blocks=[{type:'p',t:'x',html:'<script>'}],v=>v.blocks=[{type:'callout-mid',t:'T',sub:'S',cta:'C',href:'//other.invalid'}]]){const changed=value();mutate(changed);assert.throws(()=>contract.validatePublicBlogDelivery(changed));}});
@@ -81,6 +82,18 @@ function site(deliveries=[],language='es'){
   const otherIndex=renderToStaticMarkup(otherSite.index().default());assert(!otherIndex.includes(delivery.title));assert(!otherIndex.includes(delivery.slug));
   const links=s.sitemap().default().filter(p=>p.url.endsWith('/blog/'+delivery.slug));assert.deepEqual(links.map(p=>p.url),[delivery.canonicalUrl]);
   const feed=await s.rss().GET(),xml=await feed.text();assert.equal(xml.includes(delivery.slug),lang==='en');
+ });
+ await test('English article route selects English while the server default remains Spanish',async()=>{
+  const view=site([],'es'),route=view.englishArticle(),slug='interpretar-metricas-youtube-shorts',post=view.data().getPost(slug,'en');
+  assert((await route.generateStaticParams()).some(p=>p.slug===slug));
+  const metadata=await route.generateMetadata({params:Promise.resolve({slug})});
+  assert.equal(metadata.openGraph.title,post.title.en);assert.equal(metadata.alternates.canonical,'https://ytubviral.com/en/blog/'+slug);
+  const html=renderToStaticMarkup(await route.default({params:Promise.resolve({slug})}));
+  assert(html.includes(post.title.en));assert(!html.includes(post.title.es));assert(html.includes('/en/blog/'));
+  const delivery=value('en'),only=site([delivery],'es'),english=only.englishArticle();
+  assert((await english.generateStaticParams()).some(p=>p.slug===delivery.slug));
+  const approved=renderToStaticMarkup(await english.default({params:Promise.resolve({slug:delivery.slug})}));assert.deepEqual(contract.readPublicBlogMarker(approved),delivery);
+  await assert.rejects(only.article().default({params:Promise.resolve({slug:delivery.slug})}),/ORIGINAL_NOT_FOUND/);
  });
  await test('second approved language joins its article without replacing the first',()=>{const es=value(),en=value('en','b');en.publishedAt='2026-10-27';const d=site([es,en]).data(),p=d.getPost(es.slug,'es');assert.deepEqual(p.languages,['es','en']);assert.equal(p.title.es,es.title);assert.equal(p.title.en,en.title);assert.equal(p.date.es,es.publishedAt);assert.equal(p.date.en,en.publishedAt);assert.deepEqual(d.ARTICLE_BODIES[es.slug],{es:es.blocks,en:en.blocks});});
  await test('source delivery cannot overwrite any existing compiled article',()=>{const existing=site().data().BLOG_POSTS[0].slug,v=value();v.slug=existing;v.canonicalUrl='https://ytubviral.com/blog/'+existing;assert.throws(()=>site([v]).data(),/collides/);});
