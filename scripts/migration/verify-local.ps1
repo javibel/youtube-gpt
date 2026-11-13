@@ -1,8 +1,26 @@
-param([switch]$BudgetSettlement,[switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader)
+param([switch]$BudgetSettlement,[switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader,[switch]$CountInputs)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $repoName = Split-Path $repo -Leaf
+if ($CountInputs) {
+    if ($repoName -ne 'migration-web-thumbnail-count-compatibility-2026-11-13' -or $BudgetSettlement -or $AgentRelease -or $WithDatabase -or $NativeRelease -or $ObserverReader) { throw 'Dedicated isolated count-input source review required' }
+    $guard = Join-Path $repo '../migration-reporting/native-release-2026-11-05/fixture-guard.cjs'
+    if (-not (Test-Path -LiteralPath $guard)) { throw 'Existing no-external-network fixture guard required' }
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    $entries = @('scripts/migration/web-count-input-compatibility.test.cjs','scripts/migration/anthropic-nullable-usage.test.cjs','scripts/migration/anthropic-adapter.test.cjs','scripts/migration/anthropic-http.test.cjs','scripts/migration/anthropic-https.test.cjs','scripts/migration/native-host-configuration.test.cjs','scripts/migration/web-model-readiness.test.cjs','scripts/migration/public-seo.test.cjs','scripts/migration/thumbnail-preview.test.cjs')
+    Push-Location -LiteralPath $repo
+    try {
+        foreach ($entry in $entries) {
+            & $nodeExe --require $guard $entry
+            if ($LASTEXITCODE -ne 0) { throw "Affected count-input program failed: $entry" }
+        }
+        & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+        if ($LASTEXITCODE -ne 0) { throw 'Count-input source type check failed' }
+        Write-Output '{"complete":true,"scope":"web-count-input-compatibility","programs":10,"database":false,"realProviderCalls":0}'
+    } finally { Pop-Location }
+    exit 0
+}
 if ($repoName -notin @('migration-web','migration-agent')) { throw 'An independent migration copy is required' }
 $kind = if ($repoName -eq 'migration-web') { 'web' } else { 'agent' }
 if ($WithDatabase -and $kind -ne 'web') { throw 'Database/build verification belongs to the isolated web copy' }

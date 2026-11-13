@@ -25,10 +25,10 @@ export interface NativeWebProviderConfiguration {
  maxResponseBytes:number;
 }
 export interface NativeWebCountedReservationConfiguration {
- revision:'anthropic-web-counted-double-plus4096-2026-11-05';
+ revision:'anthropic-web-text-count-and-haiku-vision-context-2026-11-13';
  pricingSelections:readonly Readonly<{tariffRevision:'anthropic-public-2026-10-28';model:string;mode:'standard-global-direct';cacheWriteTtl:'none'|'5m'|'1h'}>[];
- authorizeTokenCount(context:Readonly<NativeWebCredentialContext & {operation:'count-input-tokens';model:string;payloadDigest:string;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
- authorizeCountedReservation(context:Readonly<NativeWebCredentialContext & {reservationRevision:string;model:string;payloadDigest:string;requestId:string;maxCostMicros:number;maxOutputTokens:number;maxToolCalls:number;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
+ authorizeTokenCount(context:Readonly<NativeWebCredentialContext & {operation:'count-input-tokens';countingScope:'messages-and-system';model:string;payloadDigest:string;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
+ authorizeCountedReservation(context:Readonly<NativeWebCredentialContext & {reservationRevision:string;reservationBasis:'counted-double-plus4096'|'haiku-vision-context-200000';taskType:string;model:string;payloadDigest:string;requestId:string;maxCostMicros:number;maxOutputTokens:number;maxToolCalls:number;account:Readonly<{apiVersion:string;workspaceId:string|null}>}>):boolean|Promise<boolean>;
 }
 export type NativeWebAnthropicConfiguration=Omit<NativeWebProviderConfiguration,'preflight'|'priceUsage'> & {apiVersion:string;workspaceId:string|null} & (
  | {preflight:NativeWebProviderConfiguration['preflight'];priceUsage:NativeWebProviderConfiguration['priceUsage'];requestReservation?:never}
@@ -58,4 +58,4 @@ export declare function createNativeWebProviderOwner(options:NativeWebProviderOw
  checkModelAvailability(context:Readonly<{runtimeId:'web';providerId:string;credentialRef:string;model:string;signal?:AbortSignal}>):Promise<Readonly<import('../model-metadata-readiness.cjs').ModelMetadataObservation>>;
  stop():Promise<Readonly<NativeWebProviderStop>>;
 }>;
-export declare const WEB_RESERVATION_REVISION:'anthropic-web-counted-double-plus4096-2026-11-05';
+export declare const WEB_RESERVATION_REVISION:'anthropic-web-text-count-and-haiku-vision-context-2026-11-13';
