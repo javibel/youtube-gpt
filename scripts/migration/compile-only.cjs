@@ -12,7 +12,12 @@ function plan(environment=process.env,args=[]){
  const policy=JSON.parse(fs.readFileSync(path.join(__dirname,'compile-policy.json'),'utf8'));
  if(require(path.join(repo,'node_modules/next/package.json')).version!==policy.nextVersion)throw Error('ISOLATION_BLOCKED: Next compile behavior needs review after version change');
  for(const [name,expected] of Object.entries(policy.files)){
-  const actual=createHash('sha256').update(fs.readFileSync(path.join(repo,name))).digest('hex');
+  const bytes=fs.readFileSync(path.join(repo,name));
+  // Configuration text is identical on Windows CRLF and Linux LF checkouts.
+  // Compiler package files retain their exact byte pins.
+  const content=['instrumentation.ts','postcss.config.mjs','next.config.ts'].includes(name)
+   ? bytes.toString('utf8').replace(/\r\n/g,'\n') : bytes;
+  const actual=createHash('sha256').update(content).digest('hex');
   if(actual!==expected)throw Error('ISOLATION_BLOCKED: compile configuration changed: '+name);
  }
  const output=path.join(repo,'.next');

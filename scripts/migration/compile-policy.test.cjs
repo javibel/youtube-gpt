@@ -4,10 +4,11 @@ const entry=path.join(__dirname,'compile-only.cjs'),repo=path.resolve(__dirname,
 const policy=JSON.parse(fs.readFileSync(path.join(__dirname,'compile-policy.json'),'utf8'));
 let passed=0;
 function test(name,fn){fn();passed++;console.log('PASS '+name);}
-function planner({version='16.3.6',tamper=null,redirect=false}={}){
+function planner({version='16.3.6',tamper=null,redirect=false,lineEnding=null}={}){
  const module={exports:{}};
  const fakeFs={...fs,readFileSync(file,...args){
    if(tamper&&file===path.join(repo,tamper))return Buffer.from('changed compiler/configuration');
+   if(lineEnding&&['instrumentation.ts','postcss.config.mjs','next.config.ts'].some(name=>file===path.join(repo,name)))return Buffer.from(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n').replace(/\n/g,lineEnding));
    return fs.readFileSync(file,...args);
  },existsSync(file){return file===path.join(repo,'.next')?redirect:fs.existsSync(file);},lstatSync(file){return file===path.join(repo,'.next')?{isSymbolicLink:()=>redirect}:fs.lstatSync(file);}};
  const imports=[];
@@ -31,6 +32,7 @@ test('reviewed compiler plan keeps compile-only mode and sanitized environment',
  assert.ok(!imports.includes(p.entry));
 });
 for(const version of ['16.3.3','16.3.7','16.3.6-canary.1'])test('unreviewed compiler version blocked '+version,()=>assert.throws(()=>planner({version}).plan({}),/needs review after version change/));
+test('reviewed configuration accepts identical LF and CRLF checkouts',()=>{for(const lineEnding of ['\n','\r\n'])assert.deepEqual(Array.from(planner({lineEnding}).plan({}).argv),['build','--experimental-build-mode','compile']);});
 for(const file of Object.keys(policy.files))test('tampered pinned configuration/compiler blocked '+file,()=>assert.throws(()=>planner({tamper:file}).plan({}),/compile configuration changed/));
 for(const args of [['--experimental-build-mode','generate'],['--webpack'],['--help']])test('mode override blocked '+args.join(' '),()=>assert.throws(()=>planner().plan({},args),/accepts no mode overrides/));
 test('redirected build output is blocked',()=>assert.throws(()=>planner({redirect:true}).plan({}),/redirected build output/));

@@ -1,9 +1,9 @@
 {
   "nextVersion": "16.3.6",
   "files": {
-    "instrumentation.ts": "be42df13fb55bd1d65cce4d6a6605827e8d289d86618cf871340e424dbabbb4d",
-    "postcss.config.mjs": "7b299d3d3b16699ddda397c0b2373b3af4f25f8fc9ccc9b3d9e64ef083bc1c21",
-    "next.config.ts": "32d056f01c7b7ba1ccee0393aa37b592c0b50bcf8108ab610a2dc1523863b727",
+    "instrumentation.ts": "78488db3d0a878d110e7d2944cb6efe630fc867f94d71aec18e936312e50b8ae",
+    "postcss.config.mjs": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde",
+    "next.config.ts": "c8e89dc1f03791de3aa5c3e3fc598f2b197a73dd1a4c7358de33afb853af5601",
     "node_modules/next/dist/build/index.js": "00dfe2e8887f882868b2e55f2ce194243e8fec83029df6036ff4e4864aa36101",
     "node_modules/next/dist/cli/next-build.js": "a2a0ac9d05c13b41d66c8cb2d50612999a91e7d1db16397f2831c208c998f4fa",
     "node_modules/next/dist/bin/next": "c5e4fa65d671193eb91b1da347295cfa8a9f06833b771bc179e15324b1da1631"
