@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth-guards';
 import { getConfigurationService } from '@/lib/ai/configuration-runtime';
+import { waitForOperationalWebRuntime } from '@/lib/ai/operational-readiness';
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 const invalid = () => json({ error: 'Solicitud de configuración no válida' }, 400);
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
   try {
     const gate = await wait.run(() => requireAdmin());
     if (!gate.ok) return gate.response;
+    await wait.run(waitForOperationalWebRuntime);
     const service = getConfigurationService();
     if (!service) return json({ error: 'El control de configuración todavía no está disponible' }, 503);
     return json({ configuration: await wait.run(() => service.current()) });
@@ -91,6 +93,7 @@ export async function POST(request: Request) {
     if (command.action === 'activate' && (typeof command.previewId !== 'string' || !command.previewId || command.previewId.length > 128)) return invalid();
     if (command.action === 'rollback' && (typeof command.revision !== 'string' || !command.revision || command.revision.length > 128)) return invalid();
     if (['validate', 'preview'].includes(command.action) && (!command.configuration || typeof command.configuration !== 'object' || Array.isArray(command.configuration))) return invalid();
+    await wait.run(waitForOperationalWebRuntime);
     const service = getConfigurationService();
     if (!service) return json({ error: 'El control de configuración todavía no está disponible' }, 503);
     try {

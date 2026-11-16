@@ -35,9 +35,7 @@ export async function register() {
       const { installLocalFixture } = await import('./lib/migration/local-fixture-runtime');
       await installLocalFixture();
     }
-    if (operationalRequested) {
-      const { installConfiguredOperationalWebRuntime } = await import('./lib/ai/operational-runtime');
-      await installConfiguredOperationalWebRuntime();
-    }
+    // Operational AI preparation belongs to its request gates. Session/data
+    // handlers can serve after inert owner capture and secret normalization.
   }
 }

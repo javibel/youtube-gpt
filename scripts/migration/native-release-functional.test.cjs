@@ -3,7 +3,7 @@
 // owner -> actual TLS fixture SQL -> installed guarded task -> counted native
 // provider wire -> durable result/retrieval -> SAME owner shutdown.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module'),{EventEmitter}=require('node:events'),{PassThrough}=require('node:stream');
-const root=path.resolve(__dirname,'../../../..'),repo=path.join(root,'work/migration-web'),fixture=path.resolve(process.argv[2]??path.join(root,'work/migration-reporting/native-release-2026-11-05/postgres'));
+const root=path.resolve(__dirname,'../../../..'),repo=path.resolve(__dirname,'../..'),fixture=path.resolve(process.argv[2]??path.join(root,'work/migration-reporting/native-release-2026-11-05/postgres'));
 assert.equal(path.dirname(fixture),path.join(root,'work/migration-reporting/native-release-2026-11-05'));assert(/^postgres(?:-v[2-9])?$/.test(path.basename(fixture)));
 const config=JSON.parse(fs.readFileSync(path.join(fixture,'synthetic-config.json')));assert.equal(config.port,55666+Number(path.basename(fixture).match(/v(\d)$/)?.[1]??1));assert.equal(config.host,'127.0.0.1');
 const {Pool}=require('pg'),ts=require('typescript'),release=require('../../lib/ai/ytubviral-native-release.json');
@@ -47,23 +47,23 @@ let db,complete=false,error;
  await db.query('INSERT INTO ytv_ai_v1.active_revision(singleton,revision) VALUES(true,$1)',[release.configuration.revision]);
  await db.query('INSERT INTO ytv_ai_v1.budgets(budget_id,currency,limit_micros) VALUES($1,$2,$3)',[release.operatingBudget.budgetId,'USD',30000000]);
  process.env.NEXT_RUNTIME='nodejs';process.env.YTV_OPERATIONAL_RUNTIME='1';process.env.ANTHROPIC_API_KEY='synthetic-native-release-key';for(const r of ['READER','ACTIVATOR','EXECUTOR'])process.env['YTV_AI_'+r+'_PASSWORD']=config.password;
- stage='instrumentation';const {register}=require('../../instrumentation.ts');await register();host=require('../../lib/ai/platform-web-host.ts');assert(deployment);assert.equal(pools.length,3);assert.equal(metadata,2);assert.equal(counts,0);assert.equal(generations,0);
+ stage='instrumentation';const {register}=require('../../instrumentation.ts');await register();host=require('../../lib/ai/platform-web-host.ts');assert(deployment);assert.equal(pools.length,0);assert.equal(metadata,0);assert.equal(generations,0);await require('../../lib/ai/operational-readiness.ts').waitForOperationalWebRuntime();assert.equal(pools.length,3);assert.equal(metadata,2);assert.equal(counts,0);assert.equal(generations,0);
  const bundle=globalThis[Symbol.for('ytubviral.ai.shared-runtime.v1')];assert(bundle);const service=require('../../lib/ai/configuration-runtime.ts').getConfigurationService();assert.equal((await service.current()).revision,release.configuration.revision);
  results.push({name:'one native preparation and atomic publication of the same guarded owner',status:'PASS',metadataObservations:metadata,pools:pools.length});
  stage='unfunded-image';const {getMessagesTask}=require('../../lib/ai/task-runtime.ts');const before=calls.length;await assert.rejects(getMessagesTask({taskType:'brand.image-generation',serviceId:'brand-agent',language:'es',instructionsVersion:'synthetic-v1'}),e=>e.code==='quota');assert.equal(calls.length,before);
  const {registerYTubViralNativeRelease}=require('../../lib/ai/ytubviral-native-release.cjs');registerYTubViralNativeRelease();assert.equal(metadata,2);
  results.push({name:'catalog50/policies31 retained; unfunded image rejected without observation or transport',status:'PASS'});
  stage='counted-task';
- const identity={taskType:'brand.social-post',serviceId:'brand-agent',language:'es',instructionsVersion:'synthetic-v1',operationKey:'combined_native_flow',requiredCapabilities:['vision','json'],outputSchema:{type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false}};
- const task=await getMessagesTask(identity),params=parameters(true,true),value=await task.create(params);assert(value.content[0].text.includes('synthetic complete'));const n=calls.length,saved=await task.retrieve(params);assert.equal(saved.accounting.replay,true);assert.deepEqual({...saved,accounting:{...saved.accounting,replay:false}},value);assert.equal(calls.length,n);
+ const identity={taskType:'brand.social-post',serviceId:'brand-agent',language:'es',instructionsVersion:'synthetic-v1',operationKey:'combined_native_flow',requiredCapabilities:['json'],outputSchema:{type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false}};
+ const task=await getMessagesTask(identity),params=parameters(false,true),value=await task.create(params);assert(value.content[0].text.includes('synthetic complete'));const n=calls.length,saved=await task.retrieve(params);assert.equal(saved.accounting.replay,true);assert.deepEqual({...saved,accounting:{...saved.accounting,replay:false}},value);assert.equal(calls.length,n);
  assert.equal(counts,1);assert.equal(generations,1);assert.equal(metadata,2);
  const budget=(await db.query('SELECT reserved_micros,settled_micros FROM ytv_ai_v1.budgets WHERE budget_id=$1',[release.operatingBudget.budgetId])).rows[0];assert.equal(Number(budget.reserved_micros),0);assert(Number(budget.settled_micros)>10000);assert(Number(budget.settled_micros)<20000);
- const rows=(await db.query('SELECT status,usage FROM ytv_ai_v1.runs')).rows;assert.equal(rows.length,1);assert(rows.every(r=>r.status==='completed'&&r.usage.estimated===false));results.push({name:'combined text/JSON/vision/bounded-search counted pricing, durable settlement and idempotent retrieval',status:'PASS',countRequests:counts,generations,settledMicros:Number(budget.settled_micros)});
- // Preserve the original conservative $3 request ceiling. After a nonzero
- // settlement the next full-$3 reservation exceeds the remaining daily cap;
- // deny before any token count/generation, without resetting the native day.
- const second=await getMessagesTask({taskType:'brand.image-prompt',userId:'synthetic-user',language:'es',instructionsVersion:'synthetic-v1',operationKey:'daily_cap'});await assert.rejects(second.create(parameters()));assert.equal(counts,1);assert.equal(generations,1);
- results.push({name:'unchanged full-$3 per-request reservation respects remaining daily headroom without reset',status:'PASS',throughputLimitation:'A nonzero settlement prevents another full-$3 reservation on that native day.'});
+ const rows=(await db.query('SELECT status,usage FROM ytv_ai_v1.runs')).rows;assert.equal(rows.length,1);assert(rows.every(r=>r.status==='completed'&&r.usage.estimated===false));results.push({name:'combined text/JSON/bounded-search counted pricing, durable settlement and idempotent retrieval',status:'PASS',countRequests:counts,generations,settledMicros:Number(budget.settled_micros)});
+ // Exhaust only this synthetic monthly budget; preserve production caps and
+ // assert no subsequent generation is admitted by the same guarded owner.
+ await db.query('UPDATE ytv_ai_v1.budgets SET settled_micros=limit_micros WHERE budget_id=$1',[release.operatingBudget.budgetId]);
+ await assert.rejects(async()=>{const second=await getMessagesTask({taskType:'brand.image-prompt',userId:'synthetic-user',language:'es',instructionsVersion:'synthetic-v1',operationKey:'monthly_cap'});await second.create(parameters());},error=>error.code==='quota');assert.equal(counts,1);assert.equal(generations,1);
+ results.push({name:'exhausted synthetic monthly budget denies another generation without renewing the original owner',status:'PASS',countRequests:counts,generations});
  stage='shutdown';const closing=host.retireConfiguredPlatformWebHost();const terminal=await closing;assert.equal(terminal.drained,true);assert.equal(terminal.deploymentDrained,true);assert.equal(metadata,2);assert(pools.every(p=>p.endCount===1));await assert.rejects(async()=>task.create(parameters()));assert.equal(await host.retireConfiguredPlatformWebHost(),terminal);
  assert.equal(nativeOpened,nativeClosed);assert(agents.every(a=>a.destroyed));results.push({name:'published task admission seals and drains the same native owner before exactly three pools close',status:'PASS',nativeOpened,nativeClosed});complete=true;
  }catch(e){error=safeError(e);}

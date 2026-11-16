@@ -1,8 +1,31 @@
-param([switch]$BudgetSettlement,[switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader,[switch]$CountInputs)
+param([switch]$BudgetSettlement,[switch]$AgentRelease,[switch]$WithDatabase,[switch]$NativeRelease,[switch]$ObserverReader,[switch]$CountInputs,[switch]$NavigationStartup)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $repoName = Split-Path $repo -Leaf
+if ($NavigationStartup) {
+    if ($repoName -ne 'migration-web-admin-navigation-latency-2026-11-16' -or $BudgetSettlement -or $AgentRelease -or $WithDatabase -or $NativeRelease -or $ObserverReader -or $CountInputs) { throw 'Dedicated isolated navigation-startup source review required' }
+    $guard = Join-Path $repo '../migration-reporting/native-release-2026-11-05/fixture-guard.cjs'
+    if (-not (Test-Path -LiteralPath $guard)) { throw 'Existing no-external-network fixture guard required' }
+    $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+    $entries = @('operational-lazy-startup','task-runtime','shared-runtime','operational-runtime','configuration-route','configuration-route-deadline','configuration-service','configuration-bootstrap','configuration-auth-startup','native-host-configuration','observer-channel-registration','observer-channel-bundle-registration','instrumentation-edge-build','navigation-edge','compile-policy')
+    # Webpack reserves ! for loader syntax; the Windows sandbox TEMP contains it.
+    $previousNavigationTemp = $env:TEMP
+    $navigationTemp = Join-Path $repo '.next/navigation-verification-temp'
+    New-Item -ItemType Directory -Path $navigationTemp -Force | Out-Null
+    $env:TEMP = $navigationTemp
+    Push-Location -LiteralPath $repo
+    try {
+        foreach ($entry in $entries) {
+            & $nodeExe --require $guard "scripts/migration/$entry.test.cjs"
+            if ($LASTEXITCODE -ne 0) { throw "Affected navigation-startup program failed: $entry" }
+        }
+        & $nodeExe --require $guard node_modules/typescript/bin/tsc --noEmit --incremental false --pretty false
+        if ($LASTEXITCODE -ne 0) { throw 'Navigation-startup source type check failed' }
+        Write-Output '{"complete":true,"scope":"navigation-startup-original-owner","programs":16,"database":false,"realProviderCalls":0}'
+    } finally { $env:TEMP = $previousNavigationTemp; Pop-Location }
+    exit 0
+}
 if ($CountInputs) {
     if ($repoName -ne 'migration-web-thumbnail-count-compatibility-2026-11-13' -or $BudgetSettlement -or $AgentRelease -or $WithDatabase -or $NativeRelease -or $ObserverReader) { throw 'Dedicated isolated count-input source review required' }
     $guard = Join-Path $repo '../migration-reporting/native-release-2026-11-05/fixture-guard.cjs'
