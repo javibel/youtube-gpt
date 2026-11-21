@@ -4,7 +4,7 @@ const entry=path.join(__dirname,'compile-only.cjs'),repo=path.resolve(__dirname,
 const policy=JSON.parse(fs.readFileSync(path.join(__dirname,'compile-policy.json'),'utf8'));
 let passed=0;
 function test(name,fn){fn();passed++;console.log('PASS '+name);}
-function planner({version='16.3.6',tamper=null,redirect=false,lineEnding=null}={}){
+function planner({version=policy.nextVersion,tamper=null,redirect=false,lineEnding=null}={}){
  const module={exports:{}};
  const fakeFs={...fs,readFileSync(file,...args){
    if(tamper&&file===path.join(repo,tamper))return Buffer.from('changed compiler/configuration');
@@ -31,7 +31,7 @@ test('reviewed compiler plan keeps compile-only mode and sanitized environment',
  assert.equal(p.env.NEXT_TELEMETRY_DISABLED,'1');assert.equal(p.env.YTV_MIGRATION_COMPILE,'1');
  assert.ok(!imports.includes(p.entry));
 });
-for(const version of ['16.3.3','16.3.7','16.3.6-canary.1'])test('unreviewed compiler version blocked '+version,()=>assert.throws(()=>planner({version}).plan({}),/needs review after version change/));
+for(const version of ['16.3.6','16.4.5','16.4.6-canary.1'])test('unreviewed compiler version blocked '+version,()=>assert.throws(()=>planner({version}).plan({}),/needs review after version change/));
 test('reviewed configuration accepts identical LF and CRLF checkouts',()=>{for(const lineEnding of ['\n','\r\n'])assert.deepEqual(Array.from(planner({lineEnding}).plan({}).argv),['build','--experimental-build-mode','compile']);});
 for(const file of Object.keys(policy.files))test('tampered pinned configuration/compiler blocked '+file,()=>assert.throws(()=>planner({tamper:file}).plan({}),/compile configuration changed/));
 for(const args of [['--experimental-build-mode','generate'],['--webpack'],['--help']])test('mode override blocked '+args.join(' '),()=>assert.throws(()=>planner().plan({},args),/accepts no mode overrides/));

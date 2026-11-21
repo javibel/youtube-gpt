@@ -39,18 +39,18 @@
     "@vercel/blob": "^2.4.0",
     "bcryptjs": "^3.0.3",
     "konva": "^10.3.0",
-    "next": "16.3.6",
+    "next": "16.4.6",
     "next-auth": "5.0.0-beta.32",
     "otplib": "^12.0.1",
+    "pg": "8.20.0",
     "prisma": "^5.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.6.0",
     "react-konva": "^19.2.5",
     "resend": "^6.10.0",
-    "stripe": "^16.0.0",
-    "sharp": "0.35.4",
-    "pg": "8.20.0"
+    "sharp": "0.35.5",
+    "stripe": "^16.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -64,9 +64,10 @@
     "typescript": "^5"
   },
   "overrides": {
-    "undici": "6.28.1",
+    "undici": "6.29.1",
     "source-map-js": "1.2.2",
-    "qs": "6.16.0",
-    "baseline-browser-mapping": "2.11.0"
+    "qs": "6.17.1",
+    "baseline-browser-mapping": "2.11.0",
+    "zod": "4.6.6"
   }
 }

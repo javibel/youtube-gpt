@@ -2,5 +2,5 @@
   "crons": [],
   "framework": "nextjs",
   "installCommand": "npm ci --ignore-scripts",
-  "buildCommand": "node scripts/release/patch-next-font-extension.cjs && node node_modules/prisma/build/index.js generate && node node_modules/next/dist/bin/next build --webpack"
+  "buildCommand": "node node_modules/prisma/build/index.js generate && node node_modules/next/dist/bin/next build --webpack"
 }
